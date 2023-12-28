@@ -1,0 +1,5 @@
+dependency_overrides:
+  native_assets_cli:
+    path: /home/wesley/Work/projects/native-dart/pkgs/native_assets_cli
+  native_toolchain_c:
+    path: /home/wesley/Work/projects/native-dart/pkgs/native_toolchain_c
