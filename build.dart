@@ -20,7 +20,11 @@ void main(List<String> args) async {
     name: packageName,
     assetId: 'package:$packageName/${packageName}.dart',
     sources: [
-      'src/native_add_library.c',
+      'src/llama.cpp',
+      'src/ggml.c',
+      'src/ggml-alloc.c',
+      'src/ggml-backend.c',
+      'src/ggml-quants.c',
     ],
   );
   await cbuilder.run(
