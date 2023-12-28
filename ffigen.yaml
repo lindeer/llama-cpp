@@ -10,6 +10,8 @@ headers:
     - 'src/llama.h'
   include-directives:
     - 'src/llama.h'
+compiler-opts:
+  - '-I/opt/programs/miniforge3/envs/clang-10/lib/clang/10.0.0/include'
 preamble: |
   // Copyright (c) 2023, the Dart project authors.  Please see the AUTHORS file
   // for details. All rights reserved. Use of this source code is governed by a

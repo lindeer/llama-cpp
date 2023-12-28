@@ -2,9 +2,11 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+import 'dart:io' show File;
 import 'package:logging/logging.dart';
 import 'package:native_assets_cli/native_assets_cli.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
+import 'package:ffigen/ffigen.dart' as fg;
 
 const packageName = 'llama_cpp';
 
@@ -13,6 +15,11 @@ const packageName = 'llama_cpp';
 void main(List<String> args) async {
   // Parse the build configuration passed to this CLI from Dart or Flutter.
   final buildConfig = await BuildConfig.fromArgs(args);
+  final ffiConfig = fg.Config.fromFile(
+    File.fromUri(buildConfig.packageRoot.resolve('ffigen.yaml')));
+  final ffiLib = fg.parse(ffiConfig);
+  ffiLib.generateFile(File.fromUri(Uri.parse(ffiConfig.output)));
+
   final buildOutput = BuildOutput();
 
   // Configure `package:native_toolchain_c` to build the C code for us.
