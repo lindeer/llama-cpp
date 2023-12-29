@@ -2,13 +2,13 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:io' show File;
-import 'package:logging/logging.dart';
+import 'dart:io' show File, Platform, Process, exit, stdout;
+import 'package:path/path.dart' as p;
 import 'package:native_assets_cli/native_assets_cli.dart';
-import 'package:native_toolchain_c/native_toolchain_c.dart';
 import 'package:ffigen/ffigen.dart' as fg;
 
 const packageName = 'llama_cpp';
+const _repoLibName = 'libllama.so';
 
 /// Implements the protocol from `package:native_assets_cli` by building
 /// the C code in `src/` and reporting what native assets it built.
@@ -20,31 +20,26 @@ void main(List<String> args) async {
   final ffiLib = fg.parse(ffiConfig);
   ffiLib.generateFile(File.fromUri(Uri.parse(ffiConfig.output)));
 
-  final buildOutput = BuildOutput();
-
-  // Configure `package:native_toolchain_c` to build the C code for us.
-  final cbuilder = CBuilder.library(
-    name: packageName,
-    assetId: 'package:$packageName/${packageName}.dart',
-    sources: [
-      'src/llama.cpp',
-      'src/ggml.c',
-      'src/ggml-alloc.c',
-      'src/ggml-backend.c',
-      'src/ggml-quants.c',
+  final env = Platform.environment;
+  final cublas = env['LLAMA_CUBLAS'];
+  final proResult = await Process.run(
+    'make',
+    [
+      _repoLibName,
+      if (cublas != null)
+        'LLAMA_CUBLAS=$cublas',
     ],
+    workingDirectory: 'src',
   );
-  await cbuilder.run(
-    buildConfig: buildConfig,
-    // `package:native_toolchain_c` will output the dynamic or static libraries it built,
-    // what files it accessed (for caching the build), etc.
-    buildOutput: buildOutput,
-    logger: Logger('')
-      ..level = Level.ALL
-      ..onRecord.listen((record) => print(record.message)),
-  );
+  print(proResult.stdout);
+  print(proResult.stderr);
+  if (proResult.exitCode != 0) {
+    exit(-1);
+  }
 
-  // Write the output according to the native assets protocol so that Dart or
-  // Flutter can find the native assets produced by this script.
-  await buildOutput.writeToFile(outDir: buildConfig.outDir);
+  final linkMode = buildConfig.linkModePreference.preferredLinkMode;
+  final libName = buildConfig.targetOs.libraryFileName(packageName, linkMode);
+  final libUri = buildConfig.outDir.resolve(libName);
+  print('libUri=$libUri');
+  File(p.join('src', _repoLibName)).renameSync(libUri.path);
 }
