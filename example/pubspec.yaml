@@ -1,4 +1,4 @@
-name: example
+name: llama_cpp_app
 description: A sample command-line application.
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
@@ -8,6 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  ffi: ^2.1.0
   llama_cpp:
     path: ..
 
