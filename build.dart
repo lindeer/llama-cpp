@@ -17,7 +17,8 @@ void main(List<String> args) async {
 
   final env = Platform.environment;
   final cublas = env['LLAMA_CUBLAS'];
-  final srcDir = buildConfig.packageRoot.resolve('src');
+  final pkgRoot = buildConfig.packageRoot;
+  final srcDir = pkgRoot.resolve('src');
   final proResult = await Process.run(
     'make',
     [
@@ -38,4 +39,25 @@ void main(List<String> args) async {
   final libUri = buildConfig.outDir.resolve(libName);
   print('libUri=$libUri');
   File(p.join(srcDir.path, _repoLibName)).renameSync(libUri.path);
+
+  final buildOutput = BuildOutput();
+  buildOutput.assets.add(Asset(
+    name: 'package:$packageName/native_$packageName.dart',
+    linkMode: linkMode,
+    target: buildConfig.target,
+    path: AssetAbsolutePath(libUri),
+  ));
+  final src = [
+    'src/llama.cpp',
+    'src/ggml.c',
+    'src/ggml-alloc.c',
+    'src/ggml-backend.c',
+    'src/ggml-quants.c',
+  ];
+
+  buildOutput.dependencies.dependencies.addAll([
+    ...src.map((s) => pkgRoot.resolve(s)),
+    pkgRoot.resolve('build.dart'),
+  ]);
+  await buildOutput.writeToFile(outDir: buildConfig.outDir);
 }
