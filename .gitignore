@@ -1,5 +1,4 @@
 .dart_tool
 pubspec.lock
-lib/native_llama_cpp.dart
 lib/libllama_cpp.so
 .idea
