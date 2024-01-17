@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:io' show File, Platform, Process, exit, stdout;
+import 'dart:io' show File, Platform, Process, exit, stderr, stdout;
 import 'package:path/path.dart' as p;
 import 'package:native_assets_cli/native_assets_cli.dart';
 
@@ -19,7 +19,7 @@ void main(List<String> args) async {
   final cublas = env['LLAMA_CUBLAS'];
   final pkgRoot = buildConfig.packageRoot;
   final srcDir = pkgRoot.resolve('src');
-  final proResult = await Process.run(
+  final proc = await Process.start(
     'make',
     [
       _repoLibName,
@@ -28,16 +28,16 @@ void main(List<String> args) async {
     ],
     workingDirectory: srcDir.path,
   );
-  print(proResult.stdout);
-  print(proResult.stderr);
-  if (proResult.exitCode != 0) {
-    exit(-1);
+  stdout.addStream(proc.stdout);
+  stderr.addStream(proc.stderr);
+  final code = await proc.exitCode;
+  if (code != 0) {
+    exit(code);
   }
 
   final linkMode = buildConfig.linkModePreference.preferredLinkMode;
   final libName = buildConfig.targetOs.libraryFileName(packageName, linkMode);
   final libUri = buildConfig.outDir.resolve(libName);
-  print('libUri=$libUri');
   File(p.join(srcDir.path, _repoLibName)).renameSync(libUri.path);
 
   final buildOutput = BuildOutput();
