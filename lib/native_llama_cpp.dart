@@ -1076,7 +1076,7 @@ final class llama_batch extends ffi.Struct {
 
   external ffi.Pointer<ffi.Int32> n_seq_id;
 
-  external ffi.Pointer<ffi.Pointer<llama_seq_id>> seq_id;
+  external ffi.Pointer<llama_seq_id> seq_id;
 
   external ffi.Pointer<ffi.Int8> logits;
 
