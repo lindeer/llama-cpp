@@ -78,14 +78,15 @@ int main(List<String> argv) {
 
   llama_cpp.llama_reset_timings(ctx);
   var count = batch.n_tokens;
-  final array = TokenDataArray(llama_cpp.llama_n_vocab(model));
+  final nVocab = llama_cpp.llama_n_vocab(model);
+  final array = TokenDataArray(nVocab);
+  final eosToken = llama_cpp.llama_token_eos(model);
   while (count <= nLen) {
-    final nVocab = llama_cpp.llama_n_vocab(model);
     final logits = llama_cpp.llama_get_logits_ith(ctx, batch.n_tokens - 1);
     array.pavedBy(logits, nVocab);
 
     final tokenId = llama_cpp.llama_sample_token_greedy(ctx, array.pointer);
-    if (tokenId == 0 || tokenId == 2 || count == nLen) {
+    if (tokenId == eosToken || count == nLen) {
       break;
     }
     final word = cStr.fromToken(model, tokenId);
