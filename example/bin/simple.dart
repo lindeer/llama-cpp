@@ -19,24 +19,25 @@ int _toNative(String text, ffi.Pointer<ffi.Char> buf, int bufSize) {
   return size - 1;
 }
 
-ffi.Pointer<llama_cpp.llama_batch> _initLlamaBatch(int size, int embd) {
-  final pointer = calloc.allocate<llama_cpp.llama_batch>(ffi.sizeOf<llama_cpp.llama_batch>());
-  final batch = pointer.ref;
-  batch.n_tokens = -1;
-  batch.token = calloc.allocate<llama_cpp.llama_token>(ffi.sizeOf<llama_cpp.llama_token>() * size);
-  batch.pos = calloc.allocate<llama_cpp.llama_pos>(ffi.sizeOf<llama_cpp.llama_pos>() * size);
-  batch.seq_id = calloc.allocate<llama_cpp.llama_seq_id>(ffi.sizeOf<llama_cpp.llama_seq_id>() * size);
-  batch.logits = calloc.allocate<ffi.Int8>(ffi.sizeOf<ffi.Int8>() * size);
-  return pointer;
-}
 
-void _freeLlamaBatch(ffi.Pointer<llama_cpp.llama_batch> pointer) {
-  final batch = pointer.ref;
-  calloc.free(batch.token);
-  calloc.free(batch.pos);
-  calloc.free(batch.seq_id);
-  calloc.free(batch.logits);
-  calloc.free(pointer);
+void _addLlamaBatch(
+    llama_cpp.llama_batch batch,
+    int id,
+    int pos,
+    List<int> seqIds,
+    bool logits,
+) {
+  final n = batch.n_tokens;
+  final m = seqIds.length;
+  batch.token[n] = id;
+  batch.pos[n] = pos;
+  batch.n_seq_id[n] = m;
+  for (var i = 0; i < m; i++) {
+    batch.seq_id[n][i] = seqIds[i];
+  }
+  batch.logits[n] = logits ? 1 : 0;
+
+  batch.n_tokens++;
 }
 
 int main(List<String> argv) {
@@ -67,7 +68,6 @@ int main(List<String> argv) {
   }
 
   final ctxSize = llama_cpp.llama_n_ctx(ctx);
-  final maxSize = ctxSize - 4;
   final tokenCapacity = prompt.length + 1;
   strLen = _toNative(prompt, strBuf, bufSize);
   final tokenBuf = calloc.allocate<llama_cpp.llama_token>(tokenCapacity * ffi.sizeOf<llama_cpp.llama_token>());
@@ -83,7 +83,7 @@ int main(List<String> argv) {
   }
   final kvReq = tokenNum + (nLen - tokenNum);
   print("\nn_len = $nLen, n_ctx = $ctxSize, n_kv_req = $kvReq, token_n = $tokenNum, len = $strLen");
-  stderr.writeln("User prompt is:");
+  stderr.write("User prompt is:");
   for (var i = 0; i < tokenNum; i++) {
     strLen = llama_cpp.llama_token_to_piece(model, tokenBuf[i], strBuf, bufSize);
     if (strLen > 0) {
@@ -95,16 +95,10 @@ int main(List<String> argv) {
 
   // create a llama_batch with size 512
   // we use this object to submit token data for decoding
-  final batchRef = _initLlamaBatch(512, 0);
-  final batch = batchRef.ref;
+  final batch = llama_cpp.llama_batch_init(512, 0, 1);
   // evaluate the initial prompt
-  batch.n_tokens = tokenNum;
-
-  for (var i = 0; i < batch.n_tokens; i++) {
-    batch.token[i] = tokenBuf[i];
-    batch.pos[i] = i;
-    batch.seq_id[i] = 0;
-    batch.logits[i] = 0;
+  for (var i = 0; i < tokenNum; i++) {
+    _addLlamaBatch(batch, tokenBuf[i], i, [0], false);
   }
   batch.logits[batch.n_tokens - 1] = 1;
 
@@ -120,7 +114,6 @@ int main(List<String> argv) {
   while (count <= nLen) {
     final nVocab = llama_cpp.llama_n_vocab(model);
     final logits = llama_cpp.llama_get_logits_ith(ctx, batch.n_tokens - 1);
-    print("???? logits=${logits[0]}");
     if (dataCapacity < nVocab) {
       calloc.free(candidates);
       dataCapacity = nVocab;
@@ -138,22 +131,18 @@ int main(List<String> argv) {
       ..sorted = false;
 
     final tokenId = llama_cpp.llama_sample_token_greedy(ctx, array);
-    if (tokenId == 2 || count == nLen) {
+    if (tokenId == 0 || tokenId == 2 || count == nLen) {
       break;
     }
     strLen = llama_cpp.llama_token_to_piece(model, tokenId, strBuf, bufSize);
-    print("??????? tokenId=$tokenId, len=$strLen");
     stdout.write(_fromNative(strBuf, strLen));
-    stdout.flush();
+    // `stdout.flush()` cause 'Bad state: StreamSink is bound to a stream' error in Dart 3.1.5
+    // stdout.flush();
 
     // prepare the next batch
     batch.n_tokens = 0;
     // push this new token for next evaluation
-    batch.token [batch.n_tokens] = tokenId;
-    batch.pos   [batch.n_tokens] = count;
-    batch.seq_id[batch.n_tokens] = 0;
-    batch.logits[batch.n_tokens] = 1;
-    batch.n_tokens++;
+    _addLlamaBatch(batch, tokenId, count, [0], true);
 
     count++;
 
@@ -166,9 +155,12 @@ int main(List<String> argv) {
   calloc.free(candidates);
   calloc.free(array);
 
+  calloc.free(tokenBuf);
+  calloc.free(strBuf);
+
   llama_cpp.llama_print_timings(ctx);
 
-  _freeLlamaBatch(batchRef);
+  llama_cpp.llama_batch_free(batch);
   llama_cpp.llama_free(ctx);
   llama_cpp.llama_free_model(model);
   llama_cpp.llama_backend_free();
