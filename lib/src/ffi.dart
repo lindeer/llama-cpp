@@ -60,6 +60,8 @@ final class NativeString {
 
   void dispose() {
     calloc.free(_buf);
+    _len = 0;
+    _size = 0;
   }
 }
 
@@ -75,9 +77,9 @@ final class TokenArray {
 
   int get length => _len;
 
-  ffi.Pointer<llama_cpp.llama_token> get pointer => _buf;
+  int operator [](int pos) => _buf[pos];
 
-  ffi.Pointer<llama_cpp.llama_token> inject(ffi.Pointer<llama_cpp.llama_model> model, NativeString text) {
+  void pavedBy(ffi.Pointer<llama_cpp.llama_model> model, NativeString text) {
     final size = text.length + 1;
     _resize(size);
     final len = llama_cpp.llama_tokenize(
@@ -90,7 +92,6 @@ final class TokenArray {
       throw Exception("tokenize '${text.dartString}' failed!");
     }
     _len = len;
-    return _buf;
   }
 
   bool _resize(int size) {
@@ -107,5 +108,54 @@ final class TokenArray {
 
   void dispose() {
     calloc.free(_buf);
+    _len = 0;
+    _size = 0;
+  }
+}
+
+final class TokenDataArray {
+  int _size;
+  int _len;
+  ffi.Pointer<llama_cpp.llama_token_data> _buf;
+  final pointer = calloc.allocate<llama_cpp.llama_token_data_array>(ffi.sizeOf<llama_cpp.llama_token_data>());
+
+  TokenDataArray(int size)
+    : _size = size
+    , _len = 0
+    , _buf = calloc.allocate<llama_cpp.llama_token_data>(size * ffi.sizeOf<llama_cpp.llama_token_data>());
+
+  int get length => _len;
+
+  void pavedBy(ffi.Pointer<ffi.Float> logits, int size) {
+    _resize(size);
+    for (var id = 0; id < size; id++) {
+      _buf[id]
+        ..id = id
+        ..logit = logits[id]
+        ..p = 0;
+    }
+    pointer.ref
+      ..data = _buf
+      ..size = size
+      ..sorted = false;
+  }
+
+  bool _resize(int size) {
+    if (size <= _size) {
+      return false;
+    }
+    dispose();
+    _buf = calloc.allocate<llama_cpp.llama_token_data>(size * ffi.sizeOf<llama_cpp.llama_token_data>());
+    _size = size;
+    // copy existing elements?
+    _len = 0;
+    return true;
+  }
+
+  void dispose() {
+    calloc.free(_buf);
+    calloc.free(pointer);
+    _len = 0;
+    _size = 0;
   }
 }

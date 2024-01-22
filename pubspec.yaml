@@ -11,11 +11,11 @@ environment:
 dependencies:
   cli_config: ^0.1.1
   logging: ^1.1.1
+  ffi: ^2.1.0
   native_assets_cli: ^0.1.0
   native_toolchain_c: ^0.1.0
 
 dev_dependencies:
-  ffigen:
-    path: /home/wesley/Work/projects/ffigen
+  ffigen: ^8.0.2
   lints: ^3.0.0
   test: ^1.21.0
