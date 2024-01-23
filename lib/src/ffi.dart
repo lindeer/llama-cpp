@@ -24,7 +24,7 @@ final class NativeString {
   int _len = 0;
   ffi.Pointer<ffi.Char> _buf;
 
-  NativeString({int size = 1024})
+  NativeString({int size = 32})
     : _size = size
     , _len = 0
     , _buf = calloc.allocate<ffi.Char>(size * ffi.sizeOf<ffi.Char>());
@@ -48,10 +48,10 @@ final class NativeString {
   }
 
   String fromToken(ffi.Pointer<llama_cpp.llama_model> model, int token) {
-    int len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
+    final len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
     if (len < 0) {
       _resize(-len);
-      _len = -len;
+      _len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
     } else {
       _len = len;
     }
