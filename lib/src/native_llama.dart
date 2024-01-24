@@ -39,7 +39,8 @@ final class NativeLLama {
     final cStr = NativeString();
     final modelParams = llama_cpp.llama_model_default_params()
       ..n_gpu_layers = params.nGpuLayers;
-    final model = llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
+    final model =
+        llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
 
     final ctxParams = llama_cpp.llama_context_default_params()
       ..seed = params.seed

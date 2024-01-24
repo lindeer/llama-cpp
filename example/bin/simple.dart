@@ -1,7 +1,8 @@
 import 'dart:ffi' as ffi;
 import 'dart:io' show stderr, stdout, Platform;
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
+
 import 'package:llama_cpp/src/ffi.dart';
+import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 
 void _addLlamaBatch(
     llama_cpp.llama_batch batch,

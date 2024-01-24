@@ -1,10 +1,10 @@
 import 'dart:convert' show utf8;
 import 'dart:ffi' as ffi;
+
 import 'package:ffi/ffi.dart';
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 
 extension NativeStringExt on String {
-
   ffi.Pointer<ffi.Char> into(NativeString native) {
     final units = utf8.encode(this);
     final size = units.length + 1;
@@ -25,9 +25,9 @@ final class NativeString {
   ffi.Pointer<ffi.Char> _buf;
 
   NativeString({int size = 32})
-    : _size = size
-    , _len = 0
-    , _buf = calloc.allocate<ffi.Char>(size * ffi.sizeOf<ffi.Char>());
+      : _size = size,
+        _len = 0,
+        _buf = calloc.allocate<ffi.Char>(size * ffi.sizeOf<ffi.Char>());
 
   int get length => _len;
 
@@ -71,9 +71,10 @@ final class TokenArray {
   ffi.Pointer<llama_cpp.llama_token> _buf;
 
   TokenArray({int size = 512})
-    : _size = size
-    , _len = 0
-    , _buf = calloc.allocate<llama_cpp.llama_token>(size * ffi.sizeOf<llama_cpp.llama_token>());
+      : _size = size,
+        _len = 0,
+        _buf = calloc.allocate<llama_cpp.llama_token>(
+            size * ffi.sizeOf<llama_cpp.llama_token>());
 
   int get length => _len;
 
@@ -84,9 +85,12 @@ final class TokenArray {
     _resize(size);
     final len = llama_cpp.llama_tokenize(
       model,
-      text.pointer, text.length,
-      _buf, _size,
-      false, true,
+      text.pointer,
+      text.length,
+      _buf,
+      _size,
+      false,
+      true,
     );
     if (len < 0) {
       throw Exception("tokenize '${text.dartString}' failed!");
@@ -110,7 +114,8 @@ final class TokenArray {
       return false;
     }
     dispose();
-    _buf = calloc.allocate<llama_cpp.llama_token>(size * ffi.sizeOf<llama_cpp.llama_token>());
+    _buf = calloc.allocate<llama_cpp.llama_token>(
+        size * ffi.sizeOf<llama_cpp.llama_token>());
     _size = size;
     // copy existing elements?
     _len = 0;
@@ -128,12 +133,14 @@ final class TokenDataArray {
   int _size;
   int _len;
   ffi.Pointer<llama_cpp.llama_token_data> _buf;
-  final pointer = calloc.allocate<llama_cpp.llama_token_data_array>(ffi.sizeOf<llama_cpp.llama_token_data>());
+  final pointer = calloc.allocate<llama_cpp.llama_token_data_array>(
+      ffi.sizeOf<llama_cpp.llama_token_data>());
 
   TokenDataArray(int size)
-    : _size = size
-    , _len = 0
-    , _buf = calloc.allocate<llama_cpp.llama_token_data>(size * ffi.sizeOf<llama_cpp.llama_token_data>());
+      : _size = size,
+        _len = 0,
+        _buf = calloc.allocate<llama_cpp.llama_token_data>(
+            size * ffi.sizeOf<llama_cpp.llama_token_data>());
 
   int get length => _len;
 
@@ -156,7 +163,8 @@ final class TokenDataArray {
       return false;
     }
     _release();
-    _buf = calloc.allocate<llama_cpp.llama_token_data>(size * ffi.sizeOf<llama_cpp.llama_token_data>());
+    _buf = calloc.allocate<llama_cpp.llama_token_data>(
+        size * ffi.sizeOf<llama_cpp.llama_token_data>());
     _size = size;
     // copy existing elements?
     _len = 0;

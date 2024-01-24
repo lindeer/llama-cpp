@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:llama_cpp/llama_cpp.dart';
 
 Future<int> main(List<String> argv) async {
