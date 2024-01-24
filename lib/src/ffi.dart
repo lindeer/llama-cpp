@@ -94,6 +94,17 @@ final class TokenArray {
     _len = len;
   }
 
+  int clear() {
+    var n = _len;
+    _len = 0;
+    return n;
+  }
+
+  void add(int token) {
+    _resize(_len + 1);
+    _buf[_len++] = token;
+  }
+
   bool _resize(int size) {
     if (size <= _size) {
       return false;
@@ -144,7 +155,7 @@ final class TokenDataArray {
     if (size <= _size) {
       return false;
     }
-    dispose();
+    _release();
     _buf = calloc.allocate<llama_cpp.llama_token_data>(size * ffi.sizeOf<llama_cpp.llama_token_data>());
     _size = size;
     // copy existing elements?
@@ -152,10 +163,15 @@ final class TokenDataArray {
     return true;
   }
 
-  void dispose() {
+  // not free array pointer
+  void _release() {
     calloc.free(_buf);
-    calloc.free(pointer);
     _len = 0;
     _size = 0;
+  }
+
+  void dispose() {
+    _release();
+    calloc.free(pointer);
   }
 }
