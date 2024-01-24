@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
+import 'dart:math' show min;
 
 import 'src/native_llama.dart';
 
@@ -18,7 +20,12 @@ class LlamaCpp {
     int nThread = 8,
   }) async {
     final recv = ReceivePort('main.incoming');
-    final params = LlamaParams(nCtx, nGpuLayers, seed, nThread);
+    final params = LlamaParams(
+      nCtx,
+      nGpuLayers,
+      seed,
+      min(nThread, Platform.numberOfProcessors),
+    );
     final isolate = await Isolate.spawn<(SendPort, String, LlamaParams)>(
       _llamaIsolate,
       (recv.sendPort, path, params),
