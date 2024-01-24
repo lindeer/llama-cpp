@@ -30,7 +30,13 @@ class LlamaCpp {
     return LlamaCpp._(recv, isolate, send, receiving.cast<String>());
   }
 
-  void dispose() {
+  static const _finish = NativeLLama.closeTag;
+
+  Future<void> dispose() async {
+    print("LlamaCpp.dispose: disposing native llama ...");
+    _send.send(_finish);
+    await _receiving.first;
+    print("LlamaCpp.dispose: native llama disposed.");
     _recv.close();
     _isolate.kill();
   }
@@ -55,6 +61,10 @@ class LlamaCpp {
     outgoing.send(incoming.sendPort);
     final questions = incoming.cast<String>();
     await for (final q in questions) {
+      if (q == _finish) {
+        print("Isolate received '$q', start closing ...");
+        break;
+      }
       final s = llama.generate(q);
       await for (final str in s) {
         outgoing.send(str);
@@ -63,5 +73,7 @@ class LlamaCpp {
         }
       }
     }
+    llama.dispose();
+    outgoing.send(_finish);
   }
 }

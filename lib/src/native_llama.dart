@@ -19,6 +19,7 @@ final class LlamaParams {
 
 final class NativeLLama {
   static const engTag = '__end__';
+  static const closeTag = '__close__';
 
   NativeLLama._(
   );
@@ -26,6 +27,9 @@ final class NativeLLama {
   factory NativeLLama(String path, LlamaParams params) {
     return NativeLLama._(
     );
+  }
+
+  void dispose() {
   }
 
   Stream<String> generate(String prompt) async* {
