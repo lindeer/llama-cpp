@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 import 'dart:math' show min;
 
@@ -9,8 +9,9 @@ class LlamaCpp {
   final Isolate _isolate;
   final SendPort _send;
   final Stream<String> _receiving;
+  final bool verbose;
 
-  const LlamaCpp._(this._recv, this._isolate, this._send, this._receiving);
+  const LlamaCpp._(this._recv, this._isolate, this._send, this._receiving, this.verbose);
 
   static Future<LlamaCpp> load(
     String path, {
@@ -18,6 +19,7 @@ class LlamaCpp {
     int nGpuLayers = 0,
     int seed = 1234,
     int nThread = 8,
+    bool verbose = true,
   }) async {
     final recv = ReceivePort('main.incoming');
     final params = LlamaParams(
@@ -34,7 +36,7 @@ class LlamaCpp {
     );
     final receiving = recv.asBroadcastStream();
     final send = (await receiving.first) as SendPort;
-    return LlamaCpp._(recv, isolate, send, receiving.cast<String>());
+    return LlamaCpp._(recv, isolate, send, receiving.cast<String>(), verbose);
   }
 
   static const _finish = NativeLLama.closeTag;
@@ -49,13 +51,23 @@ class LlamaCpp {
   }
 
   Stream<String> answer(String question) async* {
+    if (verbose) {
+      stdout.writeln("<<<<<<<<<<<<<<<");
+      stdout.writeln("$question\n---------------");
+    }
     _send.send(question);
     await for (final msg in _receiving) {
       if (msg == NativeLLama.engTag) {
         break;
       } else {
         yield msg;
+        if (verbose) {
+          stdout.write(msg);
+        }
       }
+    }
+    if (verbose) {
+      stdout.writeln("\n>>>>>>>>>>>>>>>");
     }
   }
 

@@ -42,15 +42,17 @@ final class NativeLLama {
     final model =
         llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
 
+    final t = params.nThread;
     final ctxParams = llama_cpp.llama_context_default_params()
       ..seed = params.seed
       ..n_ctx = params.nCtx
-      ..n_threads = params.nThread
-      ..n_threads_batch = 4;
+      ..n_threads = t
+      ..n_threads_batch = t;
     final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
     llama_cpp.llama_backend_init(false);
     llama_cpp.llama_kv_cache_clear(ctx);
-    final batch = llama_cpp.llama_batch_init(512, 0, 1);
+    final batch = llama_cpp.llama_batch_init(ctxParams.n_batch, 0, 1);
+    llama_cpp.llama_set_n_threads(ctx, t, t);
 
     return NativeLLama._(
       model,
@@ -77,7 +79,7 @@ final class NativeLLama {
     final nVocab = llama_cpp.llama_n_vocab(model);
     final eosToken = llama_cpp.llama_token_eos(model);
 
-    var num = batch.n_tokens;
+    var num = 0;
     var code = 0;
 
     llama_cpp.llama_reset_timings(ctx);
@@ -92,11 +94,11 @@ final class NativeLLama {
       final token = cStr.fromToken(model, tokenId);
       yield token;
 
+      num += batch.n_tokens;
       batch.n_tokens = 0;
       tokenBuf
         ..clear()
         ..add(tokenId);
-      num++;
     }
     llama_cpp.llama_print_timings(ctx);
     print("sample llama logits finished with '$code'.");
