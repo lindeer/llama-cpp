@@ -50,7 +50,6 @@ final class NativeLLama {
       ..n_threads_batch = t;
     final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
     llama_cpp.llama_backend_init(false);
-    llama_cpp.llama_kv_cache_clear(ctx);
     final batch = llama_cpp.llama_batch_init(ctxParams.n_batch, 0, 1);
     llama_cpp.llama_set_n_threads(ctx, t, t);
 
@@ -83,6 +82,7 @@ final class NativeLLama {
     var code = 0;
 
     llama_cpp.llama_reset_timings(ctx);
+    llama_cpp.llama_kv_cache_clear(ctx);
     while ((code = _decodeBatch(num, num == 0)) == 0) {
       final logits = llama_cpp.llama_get_logits_ith(ctx, batch.n_tokens - 1);
       array.pavedBy(logits, nVocab);
