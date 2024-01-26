@@ -1,8 +1,6 @@
 import 'dart:convert' show json, utf8;
+import 'dart:io' show HttpServer;
 
-import 'package:shelf_router/shelf_router.dart' show Router;
-import 'package:shelf/shelf.dart' show Request, Response;
-import 'package:shelf/shelf_io.dart' as io;
 import 'package:llama_cpp/llama_cpp.dart' show LlamaCpp;
 
 const _defaultPort = 8080;
@@ -15,19 +13,20 @@ void main(List<String> argv) async {
   final port = argv.length > 1 ? (int.tryParse(argv[1]) ?? _defaultPort) : _defaultPort;
   final ai = await LlamaCpp.load(path);
 
-  final app = Router();
-  app.post('/generate', (Request request) async {
-    final body = await request.readAsString();
+  final server = await HttpServer.bind('localhost', port);
+  print('Serving at http://${server.address.host}:${server.port}');
+  await for (final request in server) {
+    final body = await request.map((e) => List<int>.from(e)).transform(utf8.decoder).join();
     final obj = json.decode(body);
     final prompt = obj['prompt'];
-    final response = ai.answer(prompt);
-    return Response.ok(
-      response.transform(utf8.encoder),
-      headers: {
-        'Content-Type': 'application/octet-stream; charset=utf-8',
-      },
-    );
-  });
-  final server = await io.serve(app, 'localhost', port);
-  print('Serving at http://${server.address.host}:${server.port}');
+    final response = request.response;
+    response.headers
+      ..set('Content-Type', 'application/octet-stream; charset=utf-8')
+      ..add("Transfer-Encoding", "chunked");
+    response.bufferOutput = false;
+    final answer = ai.answer(prompt);
+    // for type writing effect, text segments have to be separated by '\n' in HTTP1.1
+    await response.addStream(answer.map((e) => '$e\n').transform(utf8.encoder));
+    await response.close();
+  }
 }
