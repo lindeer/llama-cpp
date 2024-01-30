@@ -78,7 +78,11 @@ final class TokenArray {
 
   int get length => _len;
 
+  int get capacity => _size;
+
   int operator [](int pos) => _buf[pos];
+
+  ffi.Pointer<llama_cpp.llama_token> pointerAt(int pos) => _buf.elementAt(pos);
 
   void pavedBy(ffi.Pointer<llama_cpp.llama_model> model, NativeString text) {
     final size = text.length + 1;
@@ -143,6 +147,12 @@ final class TokenDataArray {
             size * ffi.sizeOf<llama_cpp.llama_token_data>());
 
   int get length => _len;
+
+  llama_cpp.llama_token_data operator [](int pos) => _buf[pos];
+
+  void setLogit(int pos, double value) {
+    _buf.elementAt(pos).ref.logit = value;
+  }
 
   void pavedBy(ffi.Pointer<ffi.Float> logits, int size) {
     _resize(size);
