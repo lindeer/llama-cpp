@@ -48,6 +48,9 @@ final class NativeString {
   }
 
   String fromToken(ffi.Pointer<llama_cpp.llama_model> model, int token) {
+    if (token == 0 || token == 1 || token == 2) {
+      return '';
+    }
     final len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
     if (len < 0) {
       _resize(-len);
@@ -125,6 +128,8 @@ final class TokenArray {
     _len = 0;
     return true;
   }
+
+  List<int> toList() => List.generate(_len, (i) => _buf[i]);
 
   void dispose() {
     calloc.free(_buf);

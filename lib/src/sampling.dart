@@ -86,7 +86,34 @@ class SamplingParams {
       "\ttop_k = $topK, tfs_z = ${tfsZ.str}, top_p = ${topP.str}, min_p = ${minP.str}, "
       "typical_p = ${typicalP.str}, temp = ${temperature.str}\n"
       "\tmirostat = $mirostat, mirostat_lr = ${mirostatEta.str}, mirostat_ent = ${mirostatTau.str}";
+
+  String get samplingOrder {
+    final buf = StringBuffer('CFG -> Penalties ');
+    if (mirostat == 0) {
+      for (final c in samplersSequence.codeUnits) {
+        final seq = _samplersSeq[c];
+        if (seq != null) {
+          buf.write(seq);
+        }
+      }
+    } else {
+      buf.write('-> mirostat ');
+    }
+    return buf.toString();
+  }
+
+  @override
+  String toString() => samplingString;
 }
+
+const _samplersSeq = {
+  fChar: '-> tfs_z ',
+  kChar: '-> top_k ',
+  yChar: '-> typical_p ',
+  pChar: '-> top_p ',
+  mChar: '-> min_p ',
+  tChar: '-> temp ',
+};
 
 class SamplingContext {
   final SamplingParams params;
@@ -156,6 +183,25 @@ class SamplingContext {
 
   ffi.Pointer<llama_cpp.llama_token> get penaltyPointer =>
       _prev.elementAt(prevSize - usedSize);
+
+  /// A ring buffer to append a list of tokens
+  void acceptSampling(
+      ffi.Pointer<llama_cpp.llama_context> ctx,
+      List<int> ids,
+      bool applyGrammar,
+      ) {
+    final n = min(ids.length, prevSize);
+    for (var i = 0; i < prevSize - n; i++) {
+      _prev.elementAt(i).value = _prev[i + n];
+    }
+    for (var i = 0; i < n; i++) {
+      _prev.elementAt(i + prevSize - n).value = ids[i];
+    }
+
+    if (grammar != null && applyGrammar) {
+      // TODO: consider grammar
+    }
+  }
 }
 
 (ffi.Pointer<llama_cpp.llama_token>, int) _createNativeTokens(SamplingParams params) {

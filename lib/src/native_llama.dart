@@ -83,10 +83,22 @@ final class NativeLLama {
     var code = 0;
 
     final params = SamplingParams();
+    print('sampling:\n$params');
+    print('sampling order:\n${params.samplingOrder}');
+    print('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '
+        'n_batch = ${llama_cpp.llama_n_batch(ctx)}, '
+        'n_predict = %d, '
+        'n_keep = %d');
     final ctxSampling = SamplingContext.from(params);
+    ctxSampling.acceptSampling(
+      ctx,
+      tokenBuf.toList(),
+      false,
+    );
     llama_cpp.llama_reset_timings(ctx);
     llama_cpp.llama_kv_cache_clear(ctx);
     while ((code = _decodeBatch(num, num == 0)) == 0) {
+      print('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
       final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
       if (tokenId == eosToken) {
         code = 3;
@@ -94,6 +106,9 @@ final class NativeLLama {
       }
       final token = cStr.fromToken(model, tokenId);
       yield token;
+      ctxSampling.acceptSampling(ctx, [tokenId], true);
+      print("last: ${_tokensString(ctxSampling.penaltyPointer,
+          ctxSampling.usedSize)}");
 
       num += batch.n_tokens;
       batch.n_tokens = 0;
@@ -243,5 +258,15 @@ final class NativeLLama {
           break;
       }
     }
+  }
+
+  String _tokensString(ffi.Pointer<llama_cpp.llama_token> pointer, int len) {
+    final buf = StringBuffer('[');
+    for (var i = 0; i < len; i++) {
+      final id = pointer[i];
+      buf.write("'${cStr.fromToken(model, id)}':$id, ");
+    }
+    buf.write(']');
+    return buf.toString();
   }
 }
