@@ -10,6 +10,13 @@ extension _FloatEx on double {
   String get str => toStringAsFixed(3);
 }
 
+const fChar = 0x66;
+const kChar = 0x6b;
+const yChar = 0x79;
+const pChar = 0x70;
+const mChar = 0x6d;
+const tChar = 0x74;
+
 class SamplingParams {
   /// number of previous tokens to remember
   final int nPrev;
@@ -43,7 +50,7 @@ class SamplingParams {
   /// how strong is guidance
   final double cfgScale;
   final Map<int, double>? logitBias;
-  final penaltyPromptTokens = <int>[];
+  final List<int>? penaltyPromptTokens;
   final bool usePenaltyPromptTokens;
 
   SamplingParams({
@@ -69,6 +76,7 @@ class SamplingParams {
     this.cfgNegativePrompt,
     this.cfgScale = 1.0,
     this.logitBias,
+    this.penaltyPromptTokens,
     this.usePenaltyPromptTokens = false,
   });
 
@@ -84,27 +92,35 @@ class SamplingContext {
   final SamplingParams params;
   final ffi.Pointer<ffi.Float> mirostatMu;
   final ffi.Pointer<llama_cpp.llama_grammar>? grammar;
-  final List<int> prev;
-  final List<llama_cpp.llama_token_data> cur;
+  final ffi.Pointer<llama_cpp.llama_token> _prev;
+  final int prevSize;
+  final int usedSize;
 
   SamplingContext._(
     this.params,
     this.mirostatMu,
     this.grammar,
-    this.prev,
-    this.cur,
+    this._prev,
+    this.prevSize,
+    this.usedSize,
   );
 
   factory SamplingContext.from(SamplingParams params) {
     ffi.Pointer<llama_cpp.llama_grammar>? grammar;
     if (params.grammar != null) {}
     final mu = calloc.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>());
+    final (p, len) = _createNativeTokens(params);
+    final penaltyLastN = params.penaltyLastN < 0 ? params.nPrev
+        : params.penaltyLastN;
+    final usedSize = min(len, penaltyLastN);
+
     return SamplingContext._(
       params,
       mu,
       grammar,
-      <int>[],
-      <llama_cpp.llama_token_data>[],
+      p,
+      len,
+      usedSize,
     );
   }
 
@@ -114,6 +130,7 @@ class SamplingContext {
       llama_cpp.llama_grammar_free(g);
     }
     calloc.free(mirostatMu);
+    calloc.free(_prev);
   }
 
   void reset() {
@@ -121,19 +138,38 @@ class SamplingContext {
     if (g != null) {
       llama_cpp.llama_grammar_free(g);
     }
-    prev.fillRange(0, prev.length, 0);
-    cur.clear();
+    for (var i = 0; i < prevSize; i++) {
+      _prev[i] = 0;
+    }
   }
 
-  int get lastSampledToken => prev.last;
+  int get lastSampledToken => _prev[prevSize - 1];
 
   String lastSampledTokenString(
       ffi.Pointer<llama_cpp.llama_context> ctx, int n, NativeString cStr) {
-    final size = prev.length;
-    n = min(n, size);
+    n = min(n, prevSize);
     final model = llama_cpp.llama_get_model(ctx);
-    final result =
-        prev.sublist(size - n).map((t) => cStr.fromToken(model, t)).join('');
+    final result = List<String>.generate(n, (i) =>
+        cStr.fromToken(model, _prev[prevSize - n + i])).join('');
     return result;
   }
+
+  ffi.Pointer<llama_cpp.llama_token> get penaltyPointer =>
+      _prev.elementAt(prevSize - usedSize);
+}
+
+(ffi.Pointer<llama_cpp.llama_token>, int) _createNativeTokens(SamplingParams params) {
+  final promptTokens = params.penaltyPromptTokens ?? [];
+  late final List<int> tokens;
+  if (params.usePenaltyPromptTokens && promptTokens.isNotEmpty) {
+    tokens = promptTokens;
+  } else {
+    tokens = List<int>.generate(params.nPrev, (i) => 0);
+  }
+  final p = calloc.allocate<llama_cpp.llama_token>(
+      ffi.sizeOf<llama_cpp.llama_token>() * tokens.length);
+  for (var i = 0; i < tokens.length; i++) {
+    p[i] = tokens[i];
+  }
+  return (p, tokens.length);
 }

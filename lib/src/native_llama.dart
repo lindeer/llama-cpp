@@ -1,5 +1,5 @@
 import 'dart:ffi' as ffi;
-import 'dart:math' show max, min;
+import 'dart:math' show max;
 
 import 'ffi.dart';
 import '../native_llama_cpp.dart' as llama_cpp;
@@ -77,18 +77,17 @@ final class NativeLLama {
   Stream<String> generate(String prompt) async* {
     prompt.into(cStr);
     tokenBuf.pavedBy(model, cStr);
-    final nVocab = llama_cpp.llama_n_vocab(model);
     final eosToken = llama_cpp.llama_token_eos(model);
 
     var num = 0;
     var code = 0;
 
+    final params = SamplingParams();
+    final ctxSampling = SamplingContext.from(params);
     llama_cpp.llama_reset_timings(ctx);
     llama_cpp.llama_kv_cache_clear(ctx);
     while ((code = _decodeBatch(num, num == 0)) == 0) {
-      final logits = llama_cpp.llama_get_logits_ith(ctx, batch.n_tokens - 1);
-      array.pavedBy(logits, nVocab);
-      final tokenId = llama_cpp.llama_sample_token_greedy(ctx, array.pointer);
+      final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
       if (tokenId == eosToken) {
         code = 3;
         break;
@@ -104,6 +103,7 @@ final class NativeLLama {
     }
     llama_cpp.llama_print_timings(ctx);
     print("sample llama logits finished with '$code'.");
+    ctxSampling.free();
     yield engTag;
   }
 
@@ -136,8 +136,6 @@ final class NativeLLama {
     final model = llama_cpp.llama_get_model(ctx);
     final nVocab = llama_cpp.llama_n_vocab(model);
     final temp = params.temperature;
-    final penaltyLastN = params.penaltyLastN < 0 ? params.nPrev
-        : params.penaltyLastN;
     final penaltyRepeat = params.penaltyRepeat;
     final penaltyFrequency = params.penaltyFrequency;
     final penaltyPresent = params.penaltyPresent;
@@ -153,16 +151,14 @@ final class NativeLLama {
     });
     array.pavedBy(logits, nVocab);
     // apply penalties
-    final penaltyTokens = params.usePenaltyPromptTokens
-        ? params.penaltyPromptTokens : ctxSampling.prev;
-    final usedSize = min(penaltyTokens.length, penaltyLastN);
+    final usedSize = ctxSampling.usedSize;
     if (usedSize > 0) {
       final nl = llama_cpp.llama_token_nl(model);
       final logit = logits[nl];
       llama_cpp.llama_sample_repetition_penalties(
         ctx,
         array.pointer,
-        penaltyTokens,
+        ctxSampling.penaltyPointer,
         usedSize,
         penaltyRepeat,
         penaltyFrequency,
@@ -221,26 +217,26 @@ final class NativeLLama {
     final topK = params.topK <= 0 ? capacity : params.topK;
     for (final i in params.samplersSequence.codeUnits) {
       switch (i) {
-        case _kChar:
+        case kChar:
           llama_cpp.llama_sample_top_k(ctx, array.pointer, topK, minKeep);
           break;
-        case _fChar:
+        case fChar:
           llama_cpp.llama_sample_tail_free(ctx, array.pointer,
               params.tfsZ, minKeep);
           break;
-        case _yChar:
+        case yChar:
           llama_cpp.llama_sample_typical(ctx, array.pointer,
               params.typicalP, minKeep);
           break;
-        case _pChar:
+        case pChar:
           llama_cpp.llama_sample_top_p(ctx, array.pointer,
               params.topP, minKeep);
           break;
-        case _nChar:
+        case mChar:
           llama_cpp.llama_sample_min_p(ctx, array.pointer,
               params.minP, minKeep);
           break;
-        case _tChar:
+        case tChar:
           llama_cpp.llama_sample_temp(ctx, array.pointer, params.temperature);
           break;
         default:
@@ -249,10 +245,3 @@ final class NativeLLama {
     }
   }
 }
-
-const _fChar = 0x66;
-const _kChar = 0x6b;
-const _yChar = 0x79;
-const _pChar = 0x70;
-const _nChar = 0x6e;
-const _tChar = 0x74;
