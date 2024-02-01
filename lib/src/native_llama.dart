@@ -74,6 +74,12 @@ final class NativeLLama {
     llama_cpp.llama_backend_free();
   }
 
+  void _log(String str, {bool console = true}) {
+    if (console) {
+      print(str);
+    }
+  }
+
   Stream<String> generate(String prompt) async* {
     prompt.into(cStr);
     tokenBuf.pavedBy(model, cStr);
@@ -83,9 +89,9 @@ final class NativeLLama {
     var code = 0;
 
     final params = SamplingParams();
-    print('sampling:\n$params');
-    print('sampling order:\n${params.samplingOrder}');
-    print('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '
+    _log('sampling:\n$params');
+    _log('sampling order:\n${params.samplingOrder}');
+    _log('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '
         'n_batch = ${llama_cpp.llama_n_batch(ctx)}, '
         'n_predict = %d, '
         'n_keep = %d');
@@ -98,7 +104,8 @@ final class NativeLLama {
     llama_cpp.llama_reset_timings(ctx);
     llama_cpp.llama_kv_cache_clear(ctx);
     while ((code = _decodeBatch(num, num == 0)) == 0) {
-      print('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
+      _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}',
+          console: false);
       final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
       if (tokenId == eosToken) {
         code = 3;
@@ -107,8 +114,8 @@ final class NativeLLama {
       final token = cStr.fromToken(model, tokenId);
       yield token;
       ctxSampling.acceptSampling(ctx, [tokenId], true);
-      print("last: ${_tokensString(ctxSampling.penaltyPointer,
-          ctxSampling.usedSize)}");
+      _log("last: ${_tokensString(ctxSampling.penaltyPointer,
+          ctxSampling.usedSize)}", console: false);
 
       num += batch.n_tokens;
       batch.n_tokens = 0;
@@ -117,7 +124,7 @@ final class NativeLLama {
         ..add(tokenId);
     }
     llama_cpp.llama_print_timings(ctx);
-    print("sample llama logits finished with '$code'.");
+    _log("sample llama logits finished with '$code'.");
     ctxSampling.free();
     yield engTag;
   }
@@ -186,7 +193,7 @@ final class NativeLLama {
             final old = data.logit;
             array.setLogit(i, logit);
             final v = array[i].logit;
-            print("$i: $old -> $v");
+            _log("$i: $old -> $v", console: false);
             break;
           }
         }
@@ -218,8 +225,8 @@ final class NativeLLama {
         _samplerQueue(params, nVocab, minKeep);
         id = llama_cpp.llama_sample_token(ctx, array.pointer);
       }
-      print("sampled token($mirostat): ${'$id'.padLeft(5)}: "
-          "'${cStr.fromToken(model, id)}'");
+      _log("sampled token($mirostat): ${'$id'.padLeft(5)}: "
+          "'${cStr.fromToken(model, id)}'", console: false);
     }
 
     if (grammar != null && !isResampling) {
