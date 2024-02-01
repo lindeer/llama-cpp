@@ -1,8 +1,12 @@
 import 'dart:io' show Platform, stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
-import 'dart:math' show min;
 
 import 'src/native_llama.dart';
+
+int get _physicalCores {
+  final n = Platform.numberOfProcessors;
+  return n > 4 ? n ~/ 2 : n > 0 ? n : 4;
+}
 
 class LlamaCpp {
   final ReceivePort _recv;
@@ -15,18 +19,26 @@ class LlamaCpp {
 
   static Future<LlamaCpp> load(
     String path, {
+    int seed = -1,
+    int nThread = 0,
+    int nThreadBatch = -1,
+    int nPredict = -1,
     int nCtx = 512,
-    int nGpuLayers = 0,
-    int seed = 1234,
-    int nThread = 8,
+    int nBatch = 512,
+    int nKeep = 0,
+    int nGpuLayers = -1,
+    bool numa = false,
     bool verbose = true,
   }) async {
     final recv = ReceivePort('main.incoming');
     final params = LlamaParams(
+      seed,
+      nThread > 0 ? nThread : _physicalCores,
+      nThreadBatch,
+      nPredict,
       nCtx,
       nGpuLayers,
-      seed,
-      min(nThread, Platform.numberOfProcessors),
+      numa,
     );
     final isolate = await Isolate.spawn<(SendPort, String, LlamaParams)>(
       _llamaIsolate,

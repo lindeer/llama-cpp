@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+import 'dart:io' show Platform;
 import 'dart:math' show max;
 
 import 'ffi.dart';
@@ -6,17 +7,38 @@ import '../native_llama_cpp.dart' as llama_cpp;
 import 'sampling.dart';
 
 final class LlamaParams {
-  final int nCtx;
-  final int nGpuLayers;
   final int seed;
   final int nThread;
+  final int nThreadBatch;
+  final int nPredict;
+  final int nCtx;
+  final int nGpuLayers;
+  final bool numa;
 
   const LlamaParams(
-    this.nCtx,
-    this.nGpuLayers,
     this.seed,
     this.nThread,
+    this.nThreadBatch,
+    this.nPredict,
+    this.nCtx,
+    this.nGpuLayers,
+    this.numa,
   );
+}
+
+String _systemInfo(LlamaParams params) {
+  final batch = params.nThreadBatch != -1
+      ? ' (n_threads_batch = ${params.nThreadBatch})'
+      : '';
+  return 'system_info: n_threads = ${params.nThread}$batch '
+      '/ ${Platform.numberOfProcessors} '
+      '| ${NativeString.fromNative(llama_cpp.llama_print_system_info())}';
+}
+
+bool _shouldAddBosToken(ffi.Pointer<llama_cpp.llama_model> model) {
+  final addBos = llama_cpp.llama_add_bos_token(model);
+  return addBos != -1 ? addBos != 0
+      : llama_cpp.llama_vocab_type1(model) == 0; // LLAMA_VOCAB_TYPE_SPM
 }
 
 final class NativeLLama {
@@ -38,6 +60,13 @@ final class NativeLLama {
   );
 
   factory NativeLLama(String path, LlamaParams params) {
+    final ctxSize = max(params.nCtx, 8);
+    final seed = params.seed > 0 ? params.seed
+        : DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    print('seed = $seed');
+    print('llama backend init');
+    llama_cpp.llama_backend_init(params.numa);
+
     final cStr = NativeString();
     final modelParams = llama_cpp.llama_model_default_params()
       ..n_gpu_layers = params.nGpuLayers;
@@ -46,14 +75,23 @@ final class NativeLLama {
 
     final t = params.nThread;
     final ctxParams = llama_cpp.llama_context_default_params()
-      ..seed = params.seed
-      ..n_ctx = params.nCtx
+      ..seed = 1234
+      ..n_ctx = ctxSize
       ..n_threads = t
-      ..n_threads_batch = t;
+      ..n_threads_batch = params.nThreadBatch == -1 ? t : params.nThreadBatch;
     final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
-    llama_cpp.llama_backend_init(false);
+
+    final nCtxTrain = llama_cpp.llama_n_ctx_train(model);
+    final nCtx = llama_cpp.llama_n_ctx(ctx);
+    print('n_ctx: $nCtx, train=$nCtxTrain');
+    if (nCtx > nCtxTrain) {
+      print('warning: model was trained on only $nCtxTrain context tokens '
+          '($nCtx specified)');
+    }
+    print(_systemInfo(params));
+    print('add_bos: ${_shouldAddBosToken(model)}');
+
     final batch = llama_cpp.llama_batch_init(ctxParams.n_batch, 0, 1);
-    llama_cpp.llama_set_n_threads(ctx, t, t);
 
     return NativeLLama._(
       model,
@@ -83,6 +121,8 @@ final class NativeLLama {
   Stream<String> generate(String prompt) async* {
     prompt.into(cStr);
     tokenBuf.pavedBy(model, cStr);
+    _log('prompt: "$prompt"');
+    _log('tokens: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
     final eosToken = llama_cpp.llama_token_eos(model);
 
     var num = 0;

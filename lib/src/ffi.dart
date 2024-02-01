@@ -47,6 +47,9 @@ final class NativeString {
     return true;
   }
 
+  static String fromNative(ffi.Pointer<ffi.Char> pointer) =>
+      pointer.cast<Utf8>().toDartString();
+
   String fromToken(ffi.Pointer<llama_cpp.llama_model> model, int token) {
     if (token == 0 || token == 1 || token == 2) {
       return '';
