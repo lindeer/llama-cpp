@@ -8,6 +8,20 @@ int get _physicalCores {
   return n > 4 ? n ~/ 2 : n > 0 ? n : 4;
 }
 
+/// A brief overview of inter-ops among main classes:
+///
+/// +----------------+---------------------+--------------------+
+/// |  main Isolate  |    llama Isolate    |    native world    |
+/// |----------------|---------------------|--------------------|
+/// |   LlamaCpp     |     NativeLlama     |    llama_cpp       |
+/// |                |                     |                    |
+/// |          send --> incoming          -->       +           |
+/// |                |                     |        |           |
+/// |                |                    ffi       |           |
+/// |                |                     |        |           |
+/// |     receiving <-- outgoing          <--       +           |
+/// |                |                     |                    |
+/// +---------------+---------------------+---------------------+
 class LlamaCpp {
   final ReceivePort _recv;
   final Isolate _isolate;
@@ -17,6 +31,7 @@ class LlamaCpp {
 
   const LlamaCpp._(this._recv, this._isolate, this._send, this._receiving, this.verbose);
 
+  /// Async create LlamaCpp by given params.
   static Future<LlamaCpp> load(
     String path, {
     int seed = -1,
@@ -56,6 +71,7 @@ class LlamaCpp {
 
   static const _finish = NativeLLama.closeTag;
 
+  /// Notify isolate to free native resources, after that, finish this isolate.
   Future<void> dispose() async {
     print("LlamaCpp.dispose: disposing native llama ...");
     _send.send(_finish);
@@ -65,6 +81,8 @@ class LlamaCpp {
     _isolate.kill();
   }
 
+  /// Generate text stream by given prompt.
+  /// @question The prompt passed by user who want model to generate an answer.
   Stream<String> answer(String question) async* {
     if (verbose) {
       stdout.writeln("<<<<<<<<<<<<<<<");
