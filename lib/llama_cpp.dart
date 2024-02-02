@@ -84,12 +84,12 @@ class LlamaCpp {
 
   /// Generate text stream by given prompt.
   /// @question The prompt passed by user who want model to generate an answer.
-  Stream<String> answer(String question) async* {
+  Stream<String> answer(String request) async* {
     if (verbose) {
       stdout.writeln("<<<<<<<<<<<<<<<");
-      stdout.writeln("$question\n---------------");
+      stdout.writeln("$request\n---------------");
     }
-    _send.send(question);
+    _send.send(request);
     await for (final msg in _receiving) {
       if (msg == NativeLLama.engTag) {
         break;
@@ -112,13 +112,13 @@ class LlamaCpp {
 
     final llama = NativeLLama(path, params);
     outgoing.send(incoming.sendPort);
-    final questions = incoming.cast<String>();
-    await for (final q in questions) {
-      if (q == _finish) {
-        print("Isolate received '$q', start closing ...");
+    final requests = incoming.cast<String>();
+    await for (final r in requests) {
+      if (r == _finish) {
+        print("Isolate received '$r', start closing ...");
         break;
       }
-      final params = json.decode(q);
+      final params = json.decode(r);
       final prompt = params['prompt'] as String;
       final s = llama.generate(
         prompt,
