@@ -1,3 +1,4 @@
+import 'dart:convert' show json;
 import 'dart:io' show Platform, stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 
@@ -117,7 +118,28 @@ class LlamaCpp {
         print("Isolate received '$q', start closing ...");
         break;
       }
-      final s = llama.generate(q);
+      final params = json.decode(q);
+      final prompt = params['prompt'] as String;
+      final s = llama.generate(
+        prompt,
+        nPrev: params['n_prev'],
+        nProbs: params['n_probs'],
+        topK: params['top_k'],
+        topP: params['top_p'],
+        minP: params['min_p'],
+        tfsZ: params['tfs_z'],
+        typicalP: params['typical_p'],
+        temperature: params['temperature'],
+        penaltyLastN: params['penalty_last_n'],
+        penaltyRepeat: params['penalty_repeat'],
+        penaltyFrequency: params['penalty_frequency'],
+        penaltyPresent: params['penalty_present'],
+        mirostat: params['mirostat'],
+        mirostatTau: params['mirostat_tau'],
+        mirostatEta: params['mirostat_eta'],
+        penalizeNewline: params['penalize_newline'],
+        samplersSequence: params['samplers_sequence'],
+      );
       await for (final str in s) {
         outgoing.send(str);
         if (str == NativeLLama.engTag) {
