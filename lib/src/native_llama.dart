@@ -6,13 +6,16 @@ import 'ffi.dart';
 import '../native_llama_cpp.dart' as llama_cpp;
 import 'sampling.dart';
 
+/// Params holder like `gpt_params` in `common/common.h`
 final class LlamaParams {
   final int seed;
   final int nThread;
   final int nThreadBatch;
   final int nPredict;
   final int nCtx;
-  final int nGpuLayers;
+  final int nBatch;
+  final int? nGpuLayers;
+  final int? mainGpu;
   final bool numa;
 
   const LlamaParams(
@@ -21,7 +24,9 @@ final class LlamaParams {
     this.nThreadBatch,
     this.nPredict,
     this.nCtx,
+    this.nBatch,
     this.nGpuLayers,
+    this.mainGpu,
     this.numa,
   );
 }
@@ -41,6 +46,7 @@ bool _shouldAddBosToken(ffi.Pointer<llama_cpp.llama_model> model) {
       : llama_cpp.llama_vocab_type1(model) == 0; // LLAMA_VOCAB_TYPE_SPM
 }
 
+/// A class represent native llama data structure, run in separate isolate.
 final class NativeLLama {
   static const engTag = '__end__';
   static const closeTag = '__close__';
@@ -68,15 +74,24 @@ final class NativeLLama {
     llama_cpp.llama_backend_init(params.numa);
 
     final cStr = NativeString();
-    final modelParams = llama_cpp.llama_model_default_params()
-      ..n_gpu_layers = params.nGpuLayers;
+    final modelParams = llama_cpp.llama_model_default_params();
+    final nGpuLayers = params.nGpuLayers;
+    if (nGpuLayers != null) {
+      modelParams.n_gpu_layers = nGpuLayers > 0 ? nGpuLayers : 0;
+    }
+    final mainGpu = params.mainGpu;
+    if (mainGpu != null) {
+      modelParams.main_gpu = mainGpu;
+    }
+
     final model =
         llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
 
     final t = params.nThread;
     final ctxParams = llama_cpp.llama_context_default_params()
-      ..seed = 1234
       ..n_ctx = ctxSize
+      ..n_batch = params.nBatch
+      ..seed = seed
       ..n_threads = t
       ..n_threads_batch = params.nThreadBatch == -1 ? t : params.nThreadBatch;
     final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
@@ -101,6 +116,7 @@ final class NativeLLama {
     );
   }
 
+  /// free native resource, need explicitly calling.
   void dispose() {
     array.dispose();
     tokenBuf.dispose();
@@ -118,7 +134,26 @@ final class NativeLLama {
     }
   }
 
-  Stream<String> generate(String prompt) async* {
+  /// generate token string by @prompt.
+  Stream<String> generate(String prompt, {
+    int? nPrev,
+    int? nProbs,
+    int? topK,
+    double? topP,
+    double? minP,
+    double? tfsZ,
+    double? typicalP,
+    double? temperature,
+    int? penaltyLastN,
+    double? penaltyRepeat,
+    double? penaltyFrequency,
+    double? penaltyPresent,
+    int? mirostat,
+    double? mirostatTau,
+    double? mirostatEta,
+    bool? penalizeNewline,
+    String? samplersSequence,
+  }) async* {
     prompt.into(cStr);
     tokenBuf.pavedBy(model, cStr);
     _log('prompt: "$prompt"');
@@ -128,7 +163,26 @@ final class NativeLLama {
     var num = 0;
     var code = 0;
 
-    final params = SamplingParams();
+    final defaultParams = const SamplingParams();
+    final params = SamplingParams(
+      nPrev: nPrev ?? defaultParams.nPrev,
+      nProbs: nProbs ?? defaultParams.nProbs,
+      topK: topK ?? defaultParams.topK,
+      topP: topP ?? defaultParams.topP,
+      minP: minP ?? defaultParams.minP,
+      tfsZ: tfsZ ?? defaultParams.tfsZ,
+      typicalP: typicalP ?? defaultParams.typicalP,
+      temperature: temperature ?? defaultParams.temperature,
+      penaltyLastN: penaltyLastN ?? defaultParams.penaltyLastN,
+      penaltyRepeat: penaltyRepeat ?? defaultParams.penaltyRepeat,
+      penaltyFrequency: penaltyFrequency ?? defaultParams.penaltyFrequency,
+      penaltyPresent: penaltyPresent ?? defaultParams.penaltyPresent,
+      mirostat: mirostat ?? defaultParams.mirostat,
+      mirostatTau: mirostatTau ?? defaultParams.mirostatTau,
+      mirostatEta: mirostatEta ?? defaultParams.mirostatEta,
+      penalizeNewline: penalizeNewline ?? defaultParams.penalizeNewline,
+      samplersSequence: samplersSequence ?? defaultParams.samplersSequence,
+    );
     _log('sampling:\n$params');
     _log('sampling order:\n${params.samplingOrder}');
     _log('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '

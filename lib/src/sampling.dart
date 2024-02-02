@@ -53,7 +53,7 @@ class SamplingParams {
   final List<int>? penaltyPromptTokens;
   final bool usePenaltyPromptTokens;
 
-  SamplingParams({
+  const SamplingParams({
     this.nPrev = 64,
     this.nProbs = 0,
     this.topK = 40,

@@ -26,7 +26,8 @@ class LlamaCpp {
     int nCtx = 512,
     int nBatch = 512,
     int nKeep = 0,
-    int nGpuLayers = -1,
+    int? nGpuLayers,
+    int? mainGpu,
     bool numa = false,
     bool verbose = true,
   }) async {
@@ -37,7 +38,9 @@ class LlamaCpp {
       nThreadBatch,
       nPredict,
       nCtx,
+      nBatch,
       nGpuLayers,
+      mainGpu,
       numa,
     );
     final isolate = await Isolate.spawn<(SendPort, String, LlamaParams)>(
