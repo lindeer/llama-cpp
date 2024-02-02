@@ -6,7 +6,7 @@ import 'package:llama_cpp/llama_cpp.dart' show LlamaCpp;
 const _defaultPort = 8080;
 void main(List<String> argv) async {
   if (argv.isEmpty) {
-    print("usage: dart server.dart MODEL_PATH [PROMPT]");
+    print("usage: dart server.dart MODEL_PATH [PORT]");
     return;
   }
   final path = argv[0];
@@ -25,8 +25,8 @@ void main(List<String> argv) async {
       ..add("Transfer-Encoding", "chunked");
     response.bufferOutput = false;
     final answer = ai.answer(prompt);
-    // for type writing effect, text segments have to be separated by '\n' in HTTP1.1
-    await response.addStream(answer.map((e) => '$e\n').transform(utf8.encoder));
+    // curl should run with `--no-buffer` param
+    await response.addStream(answer.transform(utf8.encoder));
     await response.close();
   }
 }
