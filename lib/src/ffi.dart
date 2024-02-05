@@ -50,10 +50,22 @@ final class NativeString {
   static String fromNative(ffi.Pointer<ffi.Char> pointer) =>
       pointer.cast<Utf8>().toDartString();
 
-  String fromToken(ffi.Pointer<llama_cpp.llama_model> model, int token) {
+  /// A string representation for a token.
+  /// In some model, one token would not return a full utf8 string.
+  String tokenString(ffi.Pointer<llama_cpp.llama_model> model, int token) {
     if (token == 0 || token == 1 || token == 2) {
       return '';
     }
+    final bytes = tokenBytes(model, token);
+    try {
+      return dartString;
+    } on Exception catch (_) {
+      return bytes.toString();
+    }
+  }
+
+  /// Return a raw bytes with a given token Id.
+  List<int> tokenBytes(ffi.Pointer<llama_cpp.llama_model> model, int token) {
     final len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
     if (len < 0) {
       _resize(-len);
@@ -61,7 +73,7 @@ final class NativeString {
     } else {
       _len = len;
     }
-    return dartString;
+    return List<int>.generate(_len, (i) => _buf[i], growable: false);
   }
 
   void dispose() {

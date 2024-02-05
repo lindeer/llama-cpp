@@ -58,7 +58,7 @@ int main(List<String> argv) {
   print("\nn_len = $nLen, n_ctx = $ctxSize, n_kv_req = $kvReq, token_n = $tokenNum, len = ${cStr.length}");
   stderr.write("User prompt is:");
   for (var i = 0; i < tokenNum; i++) {
-    final text = cStr.fromToken(model, tokenBuf[i]);
+    final text = cStr.tokenString(model, tokenBuf[i]);
     stderr.write(text);
   }
   stderr.writeln();
@@ -90,7 +90,7 @@ int main(List<String> argv) {
     if (tokenId == eosToken || count == nLen) {
       break;
     }
-    final word = cStr.fromToken(model, tokenId);
+    final word = cStr.tokenString(model, tokenId);
     stdout.write(word);
     // `stdout.flush()` cause 'Bad state: StreamSink is bound to a stream' error in Dart 3.1.5
     // stdout.flush();

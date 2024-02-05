@@ -172,15 +172,6 @@ class SamplingContext {
 
   int get lastSampledToken => _prev[prevSize - 1];
 
-  String lastSampledTokenString(
-      ffi.Pointer<llama_cpp.llama_context> ctx, int n, NativeString cStr) {
-    n = min(n, prevSize);
-    final model = llama_cpp.llama_get_model(ctx);
-    final result = List<String>.generate(n, (i) =>
-        cStr.fromToken(model, _prev[prevSize - n + i])).join('');
-    return result;
-  }
-
   ffi.Pointer<llama_cpp.llama_token> get penaltyPointer =>
       _prev.elementAt(prevSize - usedSize);
 

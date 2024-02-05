@@ -1,4 +1,4 @@
-import 'dart:convert' show json;
+import 'dart:convert' show json, utf8;
 import 'dart:io' show Platform, stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 
@@ -139,7 +139,7 @@ class LlamaCpp {
         mirostatEta: params['mirostat_eta'],
         penalizeNewline: params['penalize_newline'],
         samplersSequence: params['samplers_sequence'],
-      );
+      ).transform(utf8.decoder);
       await for (final str in s) {
         outgoing.send(str);
         if (str == NativeLLama.engTag) {

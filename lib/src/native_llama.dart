@@ -1,3 +1,4 @@
+import 'dart:convert' show utf8;
 import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
 import 'dart:math' show max;
@@ -134,8 +135,10 @@ final class NativeLLama {
     }
   }
 
-  /// generate token string by @prompt.
-  Stream<String> generate(String prompt, {
+  /// Generate token string by @prompt.
+  /// Some model would return two tokens to represent a single word,
+  /// so it is better to use raw stream.
+  Stream<List<int>> generate(String prompt, {
     int? nPrev,
     int? nProbs,
     int? topK,
@@ -201,11 +204,13 @@ final class NativeLLama {
       _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}',
           console: false);
       final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
+      _log("sampled token(${params.mirostat}): ${'$tokenId'.padLeft(8)}: ",
+          console: false);
       if (tokenId == eosToken) {
         code = 3;
         break;
       }
-      final token = cStr.fromToken(model, tokenId);
+      final token = cStr.tokenBytes(model, tokenId);
       yield token;
       ctxSampling.acceptSampling(ctx, [tokenId], true);
       _log("last: ${_tokensString(ctxSampling.penaltyPointer,
@@ -220,7 +225,7 @@ final class NativeLLama {
     llama_cpp.llama_print_timings(ctx);
     _log("sample llama logits finished with '$code'.");
     ctxSampling.free();
-    yield engTag;
+    yield utf8.encode(engTag);
   }
 
   int _decodeBatch(int count, bool init) {
@@ -319,8 +324,6 @@ final class NativeLLama {
         _samplerQueue(params, nVocab, minKeep);
         id = llama_cpp.llama_sample_token(ctx, array.pointer);
       }
-      _log("sampled token($mirostat): ${'$id'.padLeft(5)}: "
-          "'${cStr.fromToken(model, id)}'", console: false);
     }
 
     if (grammar != null && !isResampling) {
@@ -365,7 +368,7 @@ final class NativeLLama {
     final buf = StringBuffer('[');
     for (var i = 0; i < len; i++) {
       final id = pointer[i];
-      buf.write("'${cStr.fromToken(model, id)}':$id, ");
+      buf.write("'${cStr.tokenString(model, id)}':$id, ");
     }
     buf.write(']');
     return buf.toString();
