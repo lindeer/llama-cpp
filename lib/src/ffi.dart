@@ -1,5 +1,6 @@
 import 'dart:convert' show utf8;
 import 'dart:ffi' as ffi;
+import 'dart:typed_data' show Uint8List;
 
 import 'package:ffi/ffi.dart';
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
@@ -65,6 +66,8 @@ final class NativeString {
   }
 
   /// Return a raw bytes with a given token Id.
+  /// We need convert assigned int to unassigned, or else
+  /// `FormatException: Invalid UTF-8 byte` would be thrown.
   List<int> tokenBytes(ffi.Pointer<llama_cpp.llama_model> model, int token) {
     final len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
     if (len < 0) {
@@ -73,7 +76,7 @@ final class NativeString {
     } else {
       _len = len;
     }
-    return List<int>.generate(_len, (i) => _buf[i], growable: false);
+    return Uint8List.fromList(List<int>.generate(_len, (i) => _buf[i]));
   }
 
   void dispose() {
