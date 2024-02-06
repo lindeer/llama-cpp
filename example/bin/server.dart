@@ -10,13 +10,17 @@ void main(List<String> argv) async {
     return;
   }
   final path = argv[0];
-  final port = argv.length > 1 ? (int.tryParse(argv[1]) ?? _defaultPort) : _defaultPort;
+  final port = argv.length > 1 ? (int.tryParse(argv[1]) ?? _defaultPort)
+      : _defaultPort;
   final ai = await LlamaCpp.load(path);
 
   final server = await HttpServer.bind('localhost', port);
   print('Serving at http://${server.address.host}:${server.port}');
   await for (final request in server) {
-    final body = await request.map((e) => List<int>.from(e)).transform(utf8.decoder).join();
+    final body = await request
+        .map((e) => List<int>.from(e))
+        .transform(utf8.decoder)
+        .join();
     final response = request.response;
     response.headers
       ..set('Content-Type', 'application/octet-stream; charset=utf-8')

@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:ffi/ffi.dart';
 
 import '../native_llama_cpp.dart' as llama_cpp;
-import 'ffi.dart' show NativeString;
 
 extension _FloatEx on double {
   String get str => toStringAsFixed(3);
@@ -177,10 +176,10 @@ class SamplingContext {
 
   /// A ring buffer to append a list of tokens
   void acceptSampling(
-      ffi.Pointer<llama_cpp.llama_context> ctx,
-      List<int> ids,
-      bool applyGrammar,
-      ) {
+    ffi.Pointer<llama_cpp.llama_context> ctx,
+    List<int> ids,
+    bool applyGrammar,
+  ) {
     final n = min(ids.length, prevSize);
     for (var i = 0; i < prevSize - n; i++) {
       _prev.elementAt(i).value = _prev[i + n];
@@ -195,7 +194,8 @@ class SamplingContext {
   }
 }
 
-(ffi.Pointer<llama_cpp.llama_token>, int) _createNativeTokens(SamplingParams params) {
+(ffi.Pointer<llama_cpp.llama_token>, int) _createNativeTokens(
+    SamplingParams params) {
   final promptTokens = params.penaltyPromptTokens ?? [];
   late final List<int> tokens;
   if (params.usePenaltyPromptTokens && promptTokens.isNotEmpty) {

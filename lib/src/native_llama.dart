@@ -345,6 +345,7 @@ final class NativeLLama {
     }
 
     if (grammar != null && !isResampling) {
+      // TODO: consider grammar
     }
 
     return id;

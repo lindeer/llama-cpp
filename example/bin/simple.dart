@@ -5,11 +5,11 @@ import 'package:llama_cpp/src/ffi.dart';
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 
 void _addLlamaBatch(
-    llama_cpp.llama_batch batch,
-    int id,
-    int pos,
-    List<int> seqIds,
-    bool logits,
+  llama_cpp.llama_batch batch,
+  int id,
+  int pos,
+  List<int> seqIds,
+  bool logits,
 ) {
   final n = batch.n_tokens;
   final m = seqIds.length;

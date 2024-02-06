@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:llama_cpp/llama_cpp.dart';
 
 Future<int> main(List<String> argv) async {
-
   if (argv.isEmpty || argv[0].startsWith('-')) {
     print("usage: ${Platform.script.path} MODEL_PATH [PROMPT]");
     return 1;
