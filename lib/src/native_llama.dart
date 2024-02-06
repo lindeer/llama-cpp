@@ -1,6 +1,6 @@
 import 'dart:convert' show utf8;
 import 'dart:ffi' as ffi;
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, stderr;
 import 'dart:math' show max;
 
 import 'ffi.dart';
@@ -56,6 +56,7 @@ final class NativeLLama {
   final ffi.Pointer<llama_cpp.llama_context> ctx;
   final llama_cpp.llama_batch batch;
   final NativeString cStr;
+  final bool verbose;
   final tokenBuf = TokenArray(size: 64);
   final array = TokenDataArray(512);
 
@@ -64,9 +65,12 @@ final class NativeLLama {
     this.ctx,
     this.batch,
     this.cStr,
+    this.verbose,
   );
 
-  factory NativeLLama(String path, LlamaParams params) {
+  factory NativeLLama(String path, LlamaParams params, {
+    bool verbose = false,
+  }) {
     final ctxSize = max(params.nCtx, 8);
     final seed = params.seed > 0 ? params.seed
         : DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -114,6 +118,7 @@ final class NativeLLama {
       ctx,
       batch,
       cStr,
+      verbose,
     );
   }
 
@@ -130,9 +135,8 @@ final class NativeLLama {
   }
 
   void _log(String str, {bool console = true}) {
-    if (console) {
-      print(str);
-    }
+    final leadingNewLine = str.startsWith('\n');
+    stderr.writeln(leadingNewLine ? str.replaceFirst('\n', '\n  ') : '  $str');
   }
 
   /// Generate token string by @prompt.
@@ -159,8 +163,10 @@ final class NativeLLama {
   }) async* {
     prompt.into(cStr);
     tokenBuf.pavedBy(model, cStr);
-    _log('prompt: "$prompt"');
-    _log('tokens: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
+    if (verbose) {
+      _log('prompt: "$prompt"');
+      _log('tokens: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
+    }
     final eosToken = llama_cpp.llama_token_eos(model);
 
     var num = 0;
@@ -186,12 +192,14 @@ final class NativeLLama {
       penalizeNewline: penalizeNewline ?? defaultParams.penalizeNewline,
       samplersSequence: samplersSequence ?? defaultParams.samplersSequence,
     );
-    _log('sampling:\n$params');
-    _log('sampling order:\n${params.samplingOrder}');
-    _log('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '
-        'n_batch = ${llama_cpp.llama_n_batch(ctx)}, '
-        'n_predict = %d, '
-        'n_keep = %d');
+    if (verbose) {
+      _log('sampling:\n$params');
+      _log('sampling order:\n${params.samplingOrder}');
+      _log('generate: n_ctx = ${llama_cpp.llama_n_ctx(ctx)}, '
+          'n_batch = ${llama_cpp.llama_n_batch(ctx)}, '
+          'n_predict = %d, '
+          'n_keep = %d');
+    }
     final ctxSampling = SamplingContext.from(params);
     ctxSampling.acceptSampling(
       ctx,
@@ -201,11 +209,16 @@ final class NativeLLama {
     llama_cpp.llama_reset_timings(ctx);
     llama_cpp.llama_kv_cache_clear(ctx);
     while ((code = _decodeBatch(num, num == 0)) == 0) {
-      _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}',
-          console: false);
+      if (verbose) {
+        _log('<<<<<<<<<');
+        _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}',
+            console: false);
+      }
       final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
-      _log("sampled token(${params.mirostat}): ${'$tokenId'.padLeft(8)}: ",
-          console: false);
+      if (verbose) {
+        _log('sampled token(${params.mirostat}): ${"$tokenId".padLeft(8)}: ',
+            console: false);
+      }
       if (tokenId == eosToken) {
         code = 3;
         break;
@@ -213,8 +226,11 @@ final class NativeLLama {
       final token = cStr.tokenBytes(model, tokenId);
       yield token;
       ctxSampling.acceptSampling(ctx, [tokenId], true);
-      _log("last: ${_tokensString(ctxSampling.penaltyPointer,
-          ctxSampling.usedSize)}", console: false);
+      if (verbose) {
+        _log('\nlast: ${_tokensString(ctxSampling.penaltyPointer,
+            ctxSampling.usedSize)}', console: false);
+        _log('>>>>>>>>>');
+      }
 
       num += batch.n_tokens;
       batch.n_tokens = 0;
@@ -223,7 +239,9 @@ final class NativeLLama {
         ..add(tokenId);
     }
     llama_cpp.llama_print_timings(ctx);
-    _log("sample llama logits finished with '$code'.");
+    if (verbose) {
+      _log("sample llama logits finished with '$code'.");
+    }
     ctxSampling.free();
     yield utf8.encode(engTag);
   }
