@@ -1,16 +1,12 @@
-publish_to: none
-
 name: llama_cpp
-description: Sums two numbers with native code.
-version: 0.1.0
-repository: https://github.com/dart-lang/native/tree/main/pkgs/native_assets_cli/example/native_add_library
+description: A dart binding for llama.cpp library.
+version: 0.9.0
+repository: https://github.com/lindeer/llama-cpp
 
 environment:
   sdk: '>=3.0.0 <3.2.0'
 
 dependencies:
-  cli_config: ^0.1.1
-  logging: ^1.1.1
   ffi: ^2.1.0
   native_assets_cli: ^0.1.0
   native_toolchain_c: ^0.1.0

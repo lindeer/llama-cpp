@@ -1,16 +1,48 @@
-An example library containing native code that should be bundled with Dart and
-Flutter applications.
+A Dart binding for popular LLM inference framework [llama.cpp](https://github.com/ggerganov/llama.cpp), to bring AI to Dart world!
 
-## Usage
+## Overview
 
-Run tests with `dart --enable-experiment=native-assets test`.
+- Text generation in a separated Dart isolate.
+- Stream based output in Dart style.
+- Integtate with `native_assets_cli`.
+- Extremely simple usage.
 
-## Code organization
+## Trying examples
 
-A typical layout of a package with native code is:
+Just run in console:
+```
+dart --enable-experiment=native-assets run bin/main.dart "/path/to/your/LLM.gguf" "your prompt"
+```
 
-* `lib/` contains Dart code which uses [`dart:ffi`] and [`package:ffigen`]
-  to call into native code.
-* `src/` contains C code which is built and then invoked through `dart:ffi`.
-* `build.dart` implements the CLI that communicates which native assets
-  to build/bundle with the Dart/Flutter SDK.
+or run a simple http server:
+```
+dart --enable-experiment=native-assets run bin/server.dart "/path/to/your/LLM.gguf"
+```
+
+## Getting started
+
+Ask LLM to answer with type writing effect:
+
+```dart
+  import 'package:llama_cpp/llama_cpp.dart';
+
+  final path = '/path/to/your/LLM.gguf';
+  final llama = await LlamaCpp.load(path, verbose: true);
+
+  await for (final text in llama.answer('{"prompt":"$prompt"}')) {
+    stdout.write(text);
+  }
+  stdout.writeln();
+
+  await llama.dispose();
+```
+or if you want a full answer:
+```
+final answer = await llama.answer('{"prompt":"$prompt"}').join('');
+```
+
+More examples could be found at `example/`.
+
+## Notes
+
+native_assets_cli has beaking chanings since >0.1.0, and is not compatible with Dart >=3.2.

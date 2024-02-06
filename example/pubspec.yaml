@@ -1,12 +1,10 @@
-name: llama_cpp_app
+name: llama_cpp_example
 description: A sample command-line application.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
 
 environment:
-  sdk: ^3.1.5
+  sdk: '>=3.0.0 <3.2.0'
 
-# Add regular dependencies here.
 dependencies:
   llama_cpp:
     path: ..
