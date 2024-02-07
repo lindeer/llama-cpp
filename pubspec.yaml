@@ -1,5 +1,5 @@
 name: llama_cpp
-description: A dart binding for llama.cpp library.
+description: A dart binding for llama.cpp library, bringing AI to dart world.
 version: 0.9.0
 repository: https://github.com/lindeer/llama-cpp
 
