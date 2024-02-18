@@ -1,3 +1,8 @@
+## 1.0.0
+
+- Upgrade Dart to 3.3.0.
+- Upgrade dependencies and fix issues.
+
 ## 0.9.0
 
 - Initial version.

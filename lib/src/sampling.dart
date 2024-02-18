@@ -172,7 +172,7 @@ class SamplingContext {
   int get lastSampledToken => _prev[prevSize - 1];
 
   ffi.Pointer<llama_cpp.llama_token> get penaltyPointer =>
-      _prev.elementAt(prevSize - usedSize);
+      _prev + prevSize - usedSize;
 
   /// A ring buffer to append a list of tokens
   void acceptSampling(
@@ -182,10 +182,10 @@ class SamplingContext {
   ) {
     final n = min(ids.length, prevSize);
     for (var i = 0; i < prevSize - n; i++) {
-      _prev.elementAt(i).value = _prev[i + n];
+      (_prev + i).value = _prev[i + n];
     }
     for (var i = 0; i < n; i++) {
-      _prev.elementAt(i + prevSize - n).value = ids[i];
+      (_prev + i + prevSize - n).value = ids[i];
     }
 
     if (grammar != null && applyGrammar) {

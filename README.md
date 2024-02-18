@@ -11,12 +11,12 @@ A Dart binding for popular LLM inference framework [llama.cpp](https://github.co
 
 Just run in console:
 ```
-dart --enable-experiment=native-assets run bin/main.dart "/path/to/your/LLM.gguf" "your prompt"
+dart --enable-experiment=native-assets run example/main.dart "/path/to/your/LLM.gguf" "your prompt"
 ```
 
 or run a simple http server:
 ```
-dart --enable-experiment=native-assets run bin/server.dart "/path/to/your/LLM.gguf"
+dart --enable-experiment=native-assets run example/server.dart "/path/to/your/LLM.gguf"
 ```
 
 ## Getting started
@@ -45,4 +45,4 @@ More examples could be found at `example/`.
 
 ## Notes
 
-native_assets_cli has beaking chanings since >0.1.0, and is not compatible with Dart >=3.2.
+native_assets_cli has beaking chanings since >0.1.0, and is not compatible with Dart 3.2, however, it could run with Dart 3.1.5.

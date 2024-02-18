@@ -42,7 +42,7 @@ void main(List<String> args) async {
 
   final buildOutput = BuildOutput();
   buildOutput.assets.add(Asset(
-    name: 'package:$packageName/native_$packageName.dart',
+    id: 'package:$packageName/native_$packageName.dart',
     linkMode: linkMode,
     target: buildConfig.target,
     path: AssetAbsolutePath(libUri),
