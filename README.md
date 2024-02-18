@@ -9,6 +9,12 @@ A Dart binding for popular LLM inference framework [llama.cpp](https://github.co
 
 ## Trying examples
 
+```
+git clone https://github.com/lindeer/llama-cpp.git
+cd llama-cpp
+dart pub get
+```
+
 Just run in console:
 ```
 dart --enable-experiment=native-assets run example/main.dart "/path/to/your/LLM.gguf" "your prompt"

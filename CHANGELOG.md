@@ -1,3 +1,7 @@
+## 1.1.0
+
+- Upgrade llama.cpp to 60ed04cf to support qwen1.5.
+
 ## 1.0.0
 
 - Upgrade Dart to 3.3.0.

@@ -91,6 +91,9 @@ final class NativeLLama {
 
     final model =
         llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
+    if (model.address == 0) {
+      throw Exception("Load model from '$path' failed");
+    }
 
     final t = params.nThread;
     final ctxParams = llama_cpp.llama_context_default_params()
@@ -100,6 +103,9 @@ final class NativeLLama {
       ..n_threads = t
       ..n_threads_batch = params.nThreadBatch == -1 ? t : params.nThreadBatch;
     final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
+    if (ctx.address == 0) {
+      throw Exception("Create llama context failed");
+    }
 
     final nCtxTrain = llama_cpp.llama_n_ctx_train(model);
     final nCtx = llama_cpp.llama_n_ctx(ctx);
