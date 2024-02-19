@@ -197,12 +197,9 @@ class SamplingContext {
 (ffi.Pointer<llama_cpp.llama_token>, int) _createNativeTokens(
     SamplingParams params) {
   final promptTokens = params.penaltyPromptTokens ?? [];
-  late final List<int> tokens;
-  if (params.usePenaltyPromptTokens && promptTokens.isNotEmpty) {
-    tokens = promptTokens;
-  } else {
-    tokens = List<int>.generate(params.nPrev, (i) => 0);
-  }
+  final tokens = params.usePenaltyPromptTokens && promptTokens.isNotEmpty
+      ? promptTokens
+      : List.filled(params.nPrev, 0);
   final p = calloc.allocate<llama_cpp.llama_token>(
       ffi.sizeOf<llama_cpp.llama_token>() * tokens.length);
   for (var i = 0; i < tokens.length; i++) {
