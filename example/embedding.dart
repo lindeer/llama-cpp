@@ -75,9 +75,9 @@ int main(List<String> argv) {
     final p = data + pos;
     for (var i = 0; i < dimens; i++) {
       final v = (p + i).value;
-      stdout.write("$v, ");
+      stdout.write("${v.toStringAsFixed(6)}, ");
     }
-    stdout.writeln("]");
+    stdout.writeln("]\n");
   }
 
   calloc.free(data);
