@@ -3,6 +3,11 @@ description: A dart binding for llama.cpp library, bringing AI to dart world.
 version: 1.0.0
 repository: https://github.com/lindeer/llama-cpp
 
+topics:
+  - ai
+  - nlp
+  - llm
+
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
