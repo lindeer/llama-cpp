@@ -21,7 +21,6 @@ int main(List<String> argv) {
   final ctxParams = llama_cpp.llama_context_default_params()
     ..embedding = true
     ..seed = 1234
-    ..n_ctx = 1024
     ..n_threads = 4
     ..n_threads_batch = 4;
   final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
@@ -32,34 +31,54 @@ int main(List<String> argv) {
   final nCtx = llama_cpp.llama_n_ctx(ctx);
   print("model was trained on only $nCtxTrain context tokens ($nCtx specified)");
   final prompts = prompt.split('\n').map((e) => e.trim())
-      .where((e) => e.isNotEmpty);
+      .where((e) => e.isNotEmpty).toList(growable: false);
   llama_cpp.llama_reset_timings(ctx);
   final maxTokenSize = prompts.map((e) => e.length).reduce(m.max);
   final tokens = TokenArray(size: maxTokenSize);
   final tokenList = prompts.map((p) {
     p.into(cStr);
-    tokens.pavedBy(model, cStr);
+    tokens.pavedBy(model, cStr, addBos: true);
     return tokens.toList();
   });
+
+  for (final (i, l) in tokenList.indexed) {
+    print("main: prompt $i: '${prompts[i]}'");
+    print("main: number of tokens in prompt = ${l.length}");
+    for (final t in l) {
+      print("${'$t'.padLeft(6)} -> '${cStr.tokenString(model, t)}'");
+    }
+  }
 
   final dimens = llama_cpp.llama_n_embd(model);
   final row = tokenList.length;
   final bytes = ffi.sizeOf<ffi.Float>() * row * dimens;
   final data = calloc.allocate<ffi.Float>(bytes);
-  var count = 0;
+  var r = 0;
   var s = 0;
   for (final tokens in tokenList) {
     final len = tokens.length;
     if (batch.n_tokens + len > batchSize) {
-      count += s;
+      final out = data + r * dimens;
+      _decodeBatch(ctx, batch, out, s, dimens);
+      batch.n_tokens = 0;
+      r += s;
       s = 0;
     }
     addBatchSeq(batch, tokens, s);
     s++;
   }
 
-  final out = data + count * dimens;
+  final out = data + r * dimens;
   _decodeBatch(ctx, batch, out, s, dimens);
+  for (var j = 0, pos = 0; j < row; j++, pos += dimens) {
+    stdout.write("embedding $j: [");
+    final p = data + pos;
+    for (var i = 0; i < dimens; i++) {
+      final v = (p + i).value;
+      stdout.write("$v, ");
+    }
+    stdout.writeln("]");
+  }
 
   calloc.free(data);
   cStr.dispose();

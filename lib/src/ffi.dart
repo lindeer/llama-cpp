@@ -54,9 +54,6 @@ final class NativeString {
   /// A string representation for a token.
   /// In some model, one token would not return a full utf8 string.
   String tokenString(ffi.Pointer<llama_cpp.llama_model> model, int token) {
-    if (token == 0 || token == 1 || token == 2) {
-      return '';
-    }
     final bytes = tokenBytes(model, token);
     try {
       return dartString;
@@ -118,8 +115,8 @@ final class TokenArray {
       text.length,
       _buf,
       _size,
+      addBos,
       false,
-      true,
     );
     if (len < 0) {
       throw Exception("tokenize '${text.dartString}' failed!");
