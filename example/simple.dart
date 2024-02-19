@@ -24,6 +24,12 @@ void _addLlamaBatch(
   batch.n_tokens++;
 }
 
+void addBatchSeq(llama_cpp.llama_batch batch, List<int> tokens, int seq) {
+  for (var i = 0; i < tokens.length; i++) {
+    _addLlamaBatch(batch, tokens[i], i, [seq], false);
+  }
+}
+
 int main(List<String> argv) {
   if (argv.isEmpty || argv[0].startsWith('-')) {
     print("usage: ${Platform.script.path} MODEL_PATH [PROMPT]");
