@@ -38,7 +38,8 @@ int main(List<String> argv) {
   final tokenList = prompts.map((p) {
     p.into(cStr);
     tokens.pavedBy(model, cStr, addBos: true);
-    return tokens.toList();
+    final l = tokens.toList();
+    return l.length > batchSize ? l.sublist(0, batchSize) : l;
   });
 
   for (final (i, l) in tokenList.indexed) {
@@ -53,22 +54,19 @@ int main(List<String> argv) {
   final row = tokenList.length;
   final bytes = ffi.sizeOf<ffi.Float>() * row * dimens;
   final data = calloc.allocate<ffi.Float>(bytes);
-  var r = 0;
+  var out = data;
   var s = 0;
   for (final tokens in tokenList) {
     final len = tokens.length;
     if (batch.n_tokens + len > batchSize) {
-      final out = data + r * dimens;
       _decodeBatch(ctx, batch, out, s, dimens);
       batch.n_tokens = 0;
-      r += s;
+      out += s * dimens;
       s = 0;
     }
     addBatchSeq(batch, tokens, s);
     s++;
   }
-
-  final out = data + r * dimens;
   _decodeBatch(ctx, batch, out, s, dimens);
   for (var j = 0, pos = 0; j < row; j++, pos += dimens) {
     stdout.write("embedding $j: [");
