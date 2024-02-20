@@ -3,6 +3,7 @@ import 'dart:ffi' as ffi;
 import 'dart:io' show stderr;
 import 'dart:math' show max;
 
+import 'common.dart' as c;
 import 'ffi.dart';
 import '../native_llama_cpp.dart' as llama_cpp;
 import 'llama_params.dart';
@@ -228,26 +229,12 @@ final class NativeLLama {
   }
 
   int _decodeBatch(int count, bool init) {
-    final tokenNum = tokenBuf.length;
     // evaluate the initial prompt
-    for (var i = 0; i < tokenNum; i++) {
-      _addLlamaBatch(tokenBuf[i], count + i, !init);
-    }
+    c.addBatchPos(batch, tokenBuf.toList(), count, !init);
     if (init) {
       batch.logits[batch.n_tokens - 1] = 1;
     }
     return llama_cpp.llama_decode(ctx, batch);
-  }
-
-  void _addLlamaBatch(int id, int pos, bool logits) {
-    final n = batch.n_tokens;
-    batch.token[n] = id;
-    batch.pos[n] = pos;
-    batch.n_seq_id[n] = 1;
-    batch.seq_id[n][0] = 0;
-    batch.logits[n] = logits ? 1 : 0;
-
-    batch.n_tokens++;
   }
 
   int _sampleSampling(SamplingContext ctxSampling, int idx,

@@ -1,8 +1,9 @@
 import 'dart:ffi' as ffi;
-import 'dart:io' show stderr, stdout, Platform;
+import 'dart:io' show stdout, Platform;
 import 'dart:math' as m;
 
 import 'package:ffi/ffi.dart' show calloc;
+import 'package:llama_cpp/src/common.dart' as c;
 import 'package:llama_cpp/src/ffi.dart';
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 
@@ -59,15 +60,15 @@ int main(List<String> argv) {
   for (final tokens in tokenList) {
     final len = tokens.length;
     if (batch.n_tokens + len > batchSize) {
-      _decodeBatch(ctx, batch, out, s, dimens);
+      c.decodeEmbeddingBatch(ctx, batch, out, s, dimens);
       batch.n_tokens = 0;
       out += s * dimens;
       s = 0;
     }
-    addBatchSeq(batch, tokens, s);
+    c.addBatchSeq(batch, tokens, s);
     s++;
   }
-  _decodeBatch(ctx, batch, out, s, dimens);
+  c.decodeEmbeddingBatch(ctx, batch, out, s, dimens);
   for (var j = 0, pos = 0; j < row; j++, pos += dimens) {
     stdout.write("embedding $j: [");
     final p = data + pos;

@@ -1,34 +1,9 @@
 import 'dart:ffi' as ffi;
 import 'dart:io' show stderr, stdout, Platform;
 
+import 'package:llama_cpp/src/common.dart' as c;
 import 'package:llama_cpp/src/ffi.dart';
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
-
-void _addLlamaBatch(
-  llama_cpp.llama_batch batch,
-  int id,
-  int pos,
-  List<int> seqIds,
-  bool logits,
-) {
-  final n = batch.n_tokens;
-  final m = seqIds.length;
-  batch.token[n] = id;
-  batch.pos[n] = pos;
-  batch.n_seq_id[n] = m;
-  for (var i = 0; i < m; i++) {
-    batch.seq_id[n][i] = seqIds[i];
-  }
-  batch.logits[n] = logits ? 1 : 0;
-
-  batch.n_tokens++;
-}
-
-void addBatchSeq(llama_cpp.llama_batch batch, List<int> tokens, int seq) {
-  for (var i = 0; i < tokens.length; i++) {
-    _addLlamaBatch(batch, tokens[i], i, [seq], false);
-  }
-}
 
 int main(List<String> argv) {
   if (argv.isEmpty || argv[0].startsWith('-')) {
@@ -75,9 +50,7 @@ int main(List<String> argv) {
   // we use this object to submit token data for decoding
   final batch = llama_cpp.llama_batch_init(512, 0, 1);
   // evaluate the initial prompt
-  for (var i = 0; i < tokenNum; i++) {
-    _addLlamaBatch(batch, tokenBuf[i], i, [0], false);
-  }
+  c.addBatchSeq(batch, tokenBuf.toList(), 0);
   batch.logits[batch.n_tokens - 1] = 1;
 
   if (llama_cpp.llama_decode(ctx, batch) != 0) {
@@ -105,7 +78,7 @@ int main(List<String> argv) {
     // prepare the next batch
     batch.n_tokens = 0;
     // push this new token for next evaluation
-    _addLlamaBatch(batch, tokenId, count, [0], true);
+    c.addBatchSingle(batch, tokenId, count, true);
 
     count++;
 
