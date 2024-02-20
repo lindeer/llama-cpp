@@ -2,6 +2,7 @@ import 'dart:convert' show json, utf8;
 import 'dart:io' show Platform, stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 
+import 'src/llama_params.dart';
 import 'src/native_llama.dart';
 
 int get _physicalCores {

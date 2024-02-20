@@ -1,45 +1,12 @@
 import 'dart:convert' show utf8;
 import 'dart:ffi' as ffi;
-import 'dart:io' show Platform, stderr;
+import 'dart:io' show stderr;
 import 'dart:math' show max;
 
 import 'ffi.dart';
 import '../native_llama_cpp.dart' as llama_cpp;
+import 'llama_params.dart';
 import 'sampling.dart';
-
-/// Params holder like `gpt_params` in `common/common.h`
-final class LlamaParams {
-  final int seed;
-  final int nThread;
-  final int nThreadBatch;
-  final int nPredict;
-  final int nCtx;
-  final int nBatch;
-  final int? nGpuLayers;
-  final int? mainGpu;
-  final bool numa;
-
-  const LlamaParams(
-    this.seed,
-    this.nThread,
-    this.nThreadBatch,
-    this.nPredict,
-    this.nCtx,
-    this.nBatch,
-    this.nGpuLayers,
-    this.mainGpu,
-    this.numa,
-  );
-}
-
-String _systemInfo(LlamaParams params) {
-  final batch = params.nThreadBatch != -1
-      ? ' (n_threads_batch = ${params.nThreadBatch})'
-      : '';
-  return 'system_info: n_threads = ${params.nThread}$batch '
-      '/ ${Platform.numberOfProcessors} '
-      '| ${NativeString.fromNative(llama_cpp.llama_print_system_info())}';
-}
 
 bool _shouldAddBosToken(ffi.Pointer<llama_cpp.llama_model> model) {
   final addBos = llama_cpp.llama_add_bos_token(model);
@@ -118,7 +85,7 @@ final class NativeLLama {
       print('warning: model was trained on only $nCtxTrain context tokens '
           '($nCtx specified)');
     }
-    print(_systemInfo(params));
+    print(params.systemInfo);
     print('add_bos: ${_shouldAddBosToken(model)}');
 
     final batch = llama_cpp.llama_batch_init(ctxParams.n_batch, 0, 1);
