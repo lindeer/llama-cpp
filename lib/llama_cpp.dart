@@ -56,15 +56,15 @@ class LlamaCpp {
   }) async {
     final recv = ReceivePort('main.incoming');
     final params = LlamaParams(
-      seed,
-      nThread > 0 ? nThread : _physicalCores,
-      nThreadBatch,
-      nPredict,
-      nCtx,
-      nBatch,
-      nGpuLayers,
-      mainGpu,
-      numa,
+      seed: seed,
+      nThread: nThread > 0 ? nThread : _physicalCores,
+      nThreadBatch: nThreadBatch,
+      nPredict: nPredict,
+      nCtx: nCtx,
+      nBatch: nBatch,
+      nGpuLayers: nGpuLayers,
+      mainGpu: mainGpu,
+      numa: numa,
     );
     final isolate = await Isolate.spawn<(SendPort, String, LlamaParams)>(
       _llamaIsolate,

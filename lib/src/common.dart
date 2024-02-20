@@ -1,7 +1,11 @@
 import 'dart:ffi' as ffi;
+import 'dart:io' show Platform;
 import 'dart:math' as m;
 
 import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
+
+import 'ffi.dart';
+import 'llama_params.dart';
 
 void _addLlamaBatch(
   llama_cpp.llama_batch batch,
@@ -82,4 +86,77 @@ void decodeEmbeddingBatch(
     final out = output + k * dimens;
     _normalize(emb, out, dimens);
   }
+}
+
+int get _physicalCores {
+  final n = Platform.numberOfProcessors;
+  return n > 4
+      ? n ~/ 2
+      : n > 0
+          ? n
+          : 4;
+}
+
+String _systemInfo(LlamaParams lp, llama_cpp.llama_context_params params) {
+  final n = lp.nThreadBatch;
+  final batch = n != null ? ' (n_threads_batch = $n)' : '';
+  return 'system_info: n_threads = ${params.n_threads}$batch '
+      '/ ${Platform.numberOfProcessors} '
+      '| ${NativeString.fromNative(llama_cpp.llama_print_system_info())}';
+}
+
+/// Load a model from a given path, it could be a LLM also a embedding model.
+/// return both model and context.
+(ffi.Pointer<llama_cpp.llama_model>, ffi.Pointer<llama_cpp.llama_context>)
+    loadModel(NativeString path, LlamaParams params) {
+  final ctxSize = params.nCtx ?? 512;
+  final s = params.seed ?? 0;
+  final seed = s > 0 ? s : DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  print('seed = $seed');
+  print('llama backend init');
+  llama_cpp.llama_backend_init(params.numa);
+  final modelParams = llama_cpp.llama_model_default_params();
+  final nGpuLayers = params.nGpuLayers;
+  if (nGpuLayers != null) {
+    modelParams.n_gpu_layers = nGpuLayers > 0 ? nGpuLayers : 0;
+  }
+  final mainGpu = params.mainGpu;
+  if (mainGpu != null) {
+    modelParams.main_gpu = mainGpu;
+  }
+
+  final model = llama_cpp.llama_load_model_from_file(path.pointer, modelParams);
+  if (model.address == 0) {
+    throw Exception("Load model from '${path.dartString}' failed");
+  }
+
+  final ctxParams = llama_cpp.llama_context_default_params()
+    ..seed = seed
+    ..embedding = params.embedding;
+  if (ctxSize > 0) {
+    ctxParams.n_ctx = ctxSize;
+  }
+  final nBatch = params.nBatch ?? -1;
+  if (nBatch > 0) {
+    ctxParams.n_batch = nBatch;
+  }
+  final t = params.nThread ?? 0;
+  ctxParams.n_threads = t > 0 ? t : _physicalCores;
+  final tb = params.nThreadBatch ?? 0;
+  ctxParams.n_threads_batch = tb > 0 ? tb : ctxParams.n_threads;
+
+  final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
+  if (ctx.address == 0) {
+    throw Exception("Create llama context failed");
+  }
+  final nCtxTrain = llama_cpp.llama_n_ctx_train(model);
+  final nCtx = llama_cpp.llama_n_ctx(ctx);
+  print('n_ctx: $nCtx, train=$nCtxTrain');
+  if (nCtx > nCtxTrain) {
+    print('warning: model was trained on only $nCtxTrain context tokens '
+        '($nCtx specified)');
+  }
+  print(_systemInfo(params, ctxParams));
+
+  return (model, ctx);
 }

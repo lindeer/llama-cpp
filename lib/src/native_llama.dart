@@ -3,9 +3,9 @@ import 'dart:ffi' as ffi;
 import 'dart:io' show stderr;
 import 'dart:math' show max;
 
+import '../native_llama_cpp.dart' as llama_cpp;
 import 'common.dart' as c;
 import 'ffi.dart';
-import '../native_llama_cpp.dart' as llama_cpp;
 import 'llama_params.dart';
 import 'sampling.dart';
 
@@ -42,54 +42,13 @@ final class NativeLLama {
     LlamaParams params, {
     bool verbose = false,
   }) {
-    final ctxSize = max(params.nCtx, 8);
-    final seed = params.seed > 0
-        ? params.seed
-        : DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    print('seed = $seed');
-    print('llama backend init');
-    llama_cpp.llama_backend_init(params.numa);
-
     final cStr = NativeString();
-    final modelParams = llama_cpp.llama_model_default_params();
-    final nGpuLayers = params.nGpuLayers;
-    if (nGpuLayers != null) {
-      modelParams.n_gpu_layers = nGpuLayers > 0 ? nGpuLayers : 0;
-    }
-    final mainGpu = params.mainGpu;
-    if (mainGpu != null) {
-      modelParams.main_gpu = mainGpu;
-    }
-
-    final model =
-        llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
-    if (model.address == 0) {
-      throw Exception("Load model from '$path' failed");
-    }
-
-    final t = params.nThread;
-    final ctxParams = llama_cpp.llama_context_default_params()
-      ..n_ctx = ctxSize
-      ..n_batch = params.nBatch
-      ..seed = seed
-      ..n_threads = t
-      ..n_threads_batch = params.nThreadBatch == -1 ? t : params.nThreadBatch;
-    final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
-    if (ctx.address == 0) {
-      throw Exception("Create llama context failed");
-    }
-
-    final nCtxTrain = llama_cpp.llama_n_ctx_train(model);
-    final nCtx = llama_cpp.llama_n_ctx(ctx);
-    print('n_ctx: $nCtx, train=$nCtxTrain');
-    if (nCtx > nCtxTrain) {
-      print('warning: model was trained on only $nCtxTrain context tokens '
-          '($nCtx specified)');
-    }
-    print(params.systemInfo);
+    path.into(cStr);
+    final (model, ctx) = c.loadModel(cStr, params);
     print('add_bos: ${_shouldAddBosToken(model)}');
 
-    final batch = llama_cpp.llama_batch_init(ctxParams.n_batch, 0, 1);
+    final batchSize = llama_cpp.llama_n_batch(ctx);
+    final batch = llama_cpp.llama_batch_init(batchSize, 0, 1);
 
     return NativeLLama._(
       model,

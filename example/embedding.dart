@@ -3,9 +3,10 @@ import 'dart:io' show stdout, Platform;
 import 'dart:math' as m;
 
 import 'package:ffi/ffi.dart' show calloc;
+import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 import 'package:llama_cpp/src/common.dart' as c;
 import 'package:llama_cpp/src/ffi.dart';
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
+import 'package:llama_cpp/src/llama_params.dart';
 
 int main(List<String> argv) {
   if (argv.isEmpty || argv[0].startsWith('-')) {
@@ -14,25 +15,26 @@ int main(List<String> argv) {
   }
   final path = argv[0];
   final prompt = argv.length > 1 ? argv[1] : 'Hello my name is';
-  llama_cpp.llama_backend_init(false);
 
   final cStr = NativeString();
-  final modelParams = llama_cpp.llama_model_default_params();
-  final model = llama_cpp.llama_load_model_from_file(path.into(cStr), modelParams);
-  final ctxParams = llama_cpp.llama_context_default_params()
-    ..embedding = true
-    ..seed = 1234
-    ..n_threads = 4
-    ..n_threads_batch = 4;
-  final ctx = llama_cpp.llama_new_context_with_model(model, ctxParams);
-  const batchSize = 512;
-  final batch = llama_cpp.llama_batch_init(batchSize, 0, 1);
+  path.into(cStr);
+  final (model, ctx) = c.loadModel(
+    cStr,
+    LlamaParams(
+      seed: 1234,
+      nThread: 4,
+      nThreadBatch: 4,
+      embedding: true,
+    ),
+  );
 
-  final nCtxTrain = llama_cpp.llama_n_ctx_train(model);
-  final nCtx = llama_cpp.llama_n_ctx(ctx);
-  print("model was trained on only $nCtxTrain context tokens ($nCtx specified)");
-  final prompts = prompt.split('\n').map((e) => e.trim())
-      .where((e) => e.isNotEmpty).toList(growable: false);
+  final prompts = prompt
+      .split('\n')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList(growable: false);
+  const batchSize = 512;
+  final batch = llama_cpp.llama_batch_init(batchSize, 0, prompts.length);
   llama_cpp.llama_reset_timings(ctx);
   final maxTokenSize = prompts.map((e) => e.length).reduce(m.max);
   final tokens = TokenArray(size: maxTokenSize);
