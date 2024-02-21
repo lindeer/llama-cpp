@@ -71,7 +71,7 @@ final class NativeLLama {
     llama_cpp.llama_backend_free();
   }
 
-  void _log(String str, {bool console = true}) {
+  void _log(String str) {
     final leadingNewLine = str.startsWith('\n');
     stderr.writeln(leadingNewLine ? str.replaceFirst('\n', '\n  ') : '  $str');
   }
@@ -149,13 +149,11 @@ final class NativeLLama {
     while ((code = _decodeBatch(num, num == 0)) == 0) {
       if (verbose) {
         _log('<<<<<<<<<');
-        _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}',
-            console: false);
+        _log('eval: ${_tokensString(tokenBuf.pointerAt(0), tokenBuf.length)}');
       }
       final tokenId = _sampleSampling(ctxSampling, batch.n_tokens - 1);
       if (verbose) {
-        _log('sampled token(${params.mirostat}): ${"$tokenId".padLeft(8)}: ',
-            console: false);
+        _log('sampled token(${params.mirostat}): ${"$tokenId".padLeft(8)}: ');
       }
       if (tokenId == eosToken) {
         code = 3;
@@ -169,7 +167,7 @@ final class NativeLLama {
           ctxSampling.penaltyPointer,
           ctxSampling.usedSize,
         );
-        _log('\nlast: $str', console: false);
+        _log('\nlast: $str');
         _log('>>>>>>>>>');
       }
 
@@ -180,9 +178,7 @@ final class NativeLLama {
         ..add(tokenId);
     }
     llama_cpp.llama_print_timings(ctx);
-    if (verbose) {
-      _log("sample llama logits finished with '$code'.");
-    }
+    _log("sample llama logits finished with '$code'.");
     ctxSampling.free();
     yield utf8.encode(engTag);
   }
@@ -193,6 +189,7 @@ final class NativeLLama {
     if (init) {
       batch.logits[batch.n_tokens - 1] = 1;
     }
+    // TODO: What if llama_decode return 1?
     return llama_cpp.llama_decode(ctx, batch);
   }
 
@@ -237,7 +234,7 @@ final class NativeLLama {
             final old = data.logit;
             array.setLogit(i, logit);
             final v = array[i].logit;
-            _log("$i: $old -> $v", console: false);
+            _log("$i: $old -> $v");
             break;
           }
         }
