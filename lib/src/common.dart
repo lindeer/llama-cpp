@@ -2,9 +2,8 @@ import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
 import 'dart:math' as m;
 
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
-
 import 'ffi.dart';
+import 'lib_llama_cpp.dart' as llama_cpp;
 import 'llama_params.dart';
 
 void _addLlamaBatch(

@@ -1,9 +1,9 @@
 import 'dart:ffi' as ffi;
 import 'dart:io' show stderr, stdout, Platform;
 
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 import 'package:llama_cpp/src/common.dart' as c;
 import 'package:llama_cpp/src/ffi.dart';
+import 'package:llama_cpp/src/lib_llama_cpp.dart' as llama_cpp;
 import 'package:llama_cpp/src/llama_params.dart';
 
 int main(List<String> argv) {

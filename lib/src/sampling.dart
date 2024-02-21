@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:ffi/ffi.dart';
 
-import '../native_llama_cpp.dart' as llama_cpp;
+import 'lib_llama_cpp.dart' as llama_cpp;
 
 extension _FloatEx on double {
   String get str => toStringAsFixed(3);

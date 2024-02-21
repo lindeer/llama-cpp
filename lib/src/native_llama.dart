@@ -3,9 +3,9 @@ import 'dart:ffi' as ffi;
 import 'dart:io' show stderr;
 import 'dart:math' show max;
 
-import '../native_llama_cpp.dart' as llama_cpp;
 import 'common.dart' as c;
 import 'ffi.dart';
+import 'lib_llama_cpp.dart' as llama_cpp;
 import 'llama_params.dart';
 import 'sampling.dart';
 

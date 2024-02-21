@@ -1,10 +1,10 @@
 import 'dart:ffi' as ffi;
 
 import 'package:ffi/ffi.dart' show calloc;
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 
 import 'common.dart' as c;
 import 'ffi.dart';
+import 'lib_llama_cpp.dart' as llama_cpp;
 import 'llama_params.dart';
 
 /// Embedding runs in current isolate.

@@ -3,9 +3,9 @@ import 'dart:io' show stdout, Platform;
 import 'dart:math' as m;
 
 import 'package:ffi/ffi.dart' show calloc;
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
 import 'package:llama_cpp/src/common.dart' as c;
 import 'package:llama_cpp/src/ffi.dart';
+import 'package:llama_cpp/src/lib_llama_cpp.dart' as llama_cpp;
 import 'package:llama_cpp/src/llama_params.dart';
 
 int main(List<String> argv) {

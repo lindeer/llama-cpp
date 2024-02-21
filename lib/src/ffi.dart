@@ -3,7 +3,8 @@ import 'dart:ffi' as ffi;
 import 'dart:typed_data' show Uint8List;
 
 import 'package:ffi/ffi.dart';
-import 'package:llama_cpp/native_llama_cpp.dart' as llama_cpp;
+
+import 'lib_llama_cpp.dart' as llama_cpp;
 
 extension NativeStringExt on String {
   ffi.Pointer<ffi.Char> into(NativeString native) {
