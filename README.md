@@ -6,12 +6,14 @@ A Dart binding for popular LLM inference framework [llama.cpp](https://github.co
 - Stream based output in Dart style.
 - Integtate with `native_assets_cli`.
 - Extremely simple usage.
+- Support both LLM and embedding models.
 
 ## Trying examples
 
 ```
 git clone https://github.com/lindeer/llama-cpp.git
 cd llama-cpp
+git submodule init --recursive
 dart pub get
 ```
 
@@ -23,6 +25,12 @@ dart --enable-experiment=native-assets run example/main.dart "/path/to/your/LLM.
 or run a simple http server:
 ```
 dart --enable-experiment=native-assets run example/server.dart "/path/to/your/LLM.gguf"
+```
+
+or run a embedding model:
+```
+dart --enable-experiment=native-assets run example/embedding.dart "/path/to/your/embedding.gguf" "your text line1
+your text line2"
 ```
 
 ## Getting started
