@@ -54,7 +54,13 @@ final class Embedding {
     );
   }
 
-  List<List<double>> embedBatch(List<String> prompts) {
+  /// Embedding multiple prompts at one time.
+  List<List<double>> embedBatch(List<String> prompts) => _embed(prompts);
+
+  /// Embedding one prompt at one time.
+  List<double> embedSingle(String prompt) => _embed([prompt]).first;
+
+  List<List<double>> _embed(List<String> prompts) {
     llama_cpp.llama_reset_timings(ctx);
 
     final batchSize = llama_cpp.llama_n_batch(ctx);

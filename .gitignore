@@ -2,3 +2,4 @@
 pubspec.lock
 lib/libllama_cpp.so
 .idea
+*.gguf
