@@ -3,6 +3,7 @@
 - Upgrade llama.cpp to 60ed04cf to support qwen1.5.
 - Code refine.
 - Support embedding.
+- Support GPU building.
 
 ## 1.0.0
 
