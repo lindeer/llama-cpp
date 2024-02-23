@@ -1,0 +1,6 @@
+{
+  "source_dir": "corpus",
+  "db_server_url": "http://0.0.0.0:8000",
+  "database": "llama_cpp",
+  "collection": "rag"
+}

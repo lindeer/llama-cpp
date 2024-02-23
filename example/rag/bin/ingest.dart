@@ -4,13 +4,54 @@ import 'dart:io';
 import 'package:rag/chroma.dart';
 import 'package:rag/common.dart' as c;
 
+const chunkSize = 500;
+const overlapSize = 10;
+
 List<ChromaDoc> _processDocuments(String dir, List<String> ignored) {
-  return [];
+  bool isValidFile(String path) {
+    return FileSystemEntity.isFileSync(path) && !ignored.contains(path);
+  }
+
+  final docs = Directory(dir)
+      .listSync(recursive: true)
+      .where((f) => isValidFile(f.path))
+      .expand((e) {
+    final file = File.fromUri(e.uri);
+    final lines = file.readAsLinesSync().where((l) => l.trim().isNotEmpty);
+    return _processLines(e.uri, lines);
+  }).toList(growable: false);
+  return docs;
+}
+
+List<ChromaDoc> _processLines(Uri file, Iterable<String> lines) {
+  final result = <ChromaDoc>[];
+  final filepath = file.path;
+  for (final line in lines) {
+    final len = line.length;
+    if (len > chunkSize) {
+      for (var i = 0; i < len; i += chunkSize) {
+        final enough = len - i > chunkSize;
+        final str = enough ? line.substring(i, chunkSize) : line.substring(i);
+        final delta = i > overlapSize ? line.substring(i - overlapSize, i) : '';
+        result.add(ChromaDoc('$delta$str', filepath));
+      }
+    } else {
+      result.add(ChromaDoc(line, filepath));
+    }
+  }
+  return result;
 }
 
 void main(List<String> argv) async {
-  final uri = Directory.current.uri.resolve('config.json');
-  final config = json.decode(await File.fromUri(uri).readAsString());
+  final cur = Directory.current.uri;
+  final f1 = File.fromUri(cur.resolve('_config.json'));
+  final f2 = File.fromUri(cur.resolve('config.json'));
+  if (!f1.existsSync() || !f2.existsSync()) {
+    print("We need '_config.json' and 'config.json' files");
+    return;
+  }
+  final config = json.decode(f1.readAsStringSync()) as Map<String, dynamic>;
+  config.addAll(json.decode(f2.readAsStringSync()));
 
   final chroma = await c.setupChroma(config);
   final all = await chroma.allItems;
@@ -20,9 +61,11 @@ void main(List<String> argv) async {
       .toList(growable: false);
   final dir = config['source_dir'] ?? 'sources';
 
-  final at = DateTime.now().millisecondsSinceEpoch;
   final docs = _processDocuments(dir, ignored);
-  await chroma.add(docs);
-  final cost = DateTime.now().millisecondsSinceEpoch - at;
-  print("${docs.length} documents cost $cost ms.");
+  if (docs.isNotEmpty) {
+    final at = DateTime.now().millisecondsSinceEpoch;
+    await chroma.add(docs);
+    final cost = DateTime.now().millisecondsSinceEpoch - at;
+    print("Save [${docs.length}] documents cost $cost ms.");
+  }
 }
