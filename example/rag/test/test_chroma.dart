@@ -34,4 +34,8 @@ void main() async {
     );
     expect(list, [4, 4]);
   });
+
+  tearDownAll(() {
+    chroma.dispose();
+  });
 }

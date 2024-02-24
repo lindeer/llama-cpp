@@ -68,4 +68,5 @@ void main(List<String> argv) async {
     final cost = DateTime.now().millisecondsSinceEpoch - at;
     print("Save [${docs.length}] documents cost $cost ms.");
   }
+  chroma.dispose();
 }

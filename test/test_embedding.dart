@@ -61,4 +61,8 @@ void main() {
       _compareList(d, values[i]);
     }
   });
+
+  tearDownAll(() {
+    embedding.dispose();
+  });
 }

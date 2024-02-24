@@ -92,4 +92,8 @@ class Chroma {
       return ChromaItem._(id, doc, metadata);
     }).toList(growable: false);
   }
+
+  void dispose() {
+    embed.dispose();
+  }
 }

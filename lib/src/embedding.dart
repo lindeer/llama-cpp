@@ -118,5 +118,6 @@ final class Embedding {
     llama_cpp.llama_free(ctx);
     llama_cpp.llama_free_model(model);
     llama_cpp.llama_backend_free();
+    print('Embedding.dispose: done.');
   }
 }
