@@ -102,7 +102,11 @@ final class Embedding {
 
     final result = List<List<double>>.generate(row, (r) {
       final p = data + r * dimens;
-      return List<double>.generate(dimens, (i) => p[i], growable: false);
+      return List<double>.generate(
+        dimens,
+        (i) => (p[i] * 1000000).round() / 1000000,
+        growable: false,
+      );
     }, growable: false);
     llama_cpp.llama_print_timings(ctx);
 
