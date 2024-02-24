@@ -1,4 +1,3 @@
-import 'dart:convert' show json;
 import 'dart:io';
 
 import 'package:rag/chroma.dart';
@@ -43,16 +42,7 @@ List<ChromaDoc> _processLines(Uri file, Iterable<String> lines) {
 }
 
 void main(List<String> argv) async {
-  final cur = Directory.current.uri;
-  final f1 = File.fromUri(cur.resolve('_config.json'));
-  final f2 = File.fromUri(cur.resolve('config.json'));
-  if (!f1.existsSync() || !f2.existsSync()) {
-    print("We need '_config.json' and 'config.json' files");
-    return;
-  }
-  final config = json.decode(f1.readAsStringSync()) as Map<String, dynamic>;
-  config.addAll(json.decode(f2.readAsStringSync()));
-
+  final config = c.appConfig;
   final chroma = await c.setupChroma(config);
   final all = await chroma.allItems;
   final ignored = all
