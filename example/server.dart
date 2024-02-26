@@ -25,7 +25,7 @@ void main(List<String> argv) async {
       ..set('Content-Type', 'application/octet-stream; charset=utf-8')
       ..add("Transfer-Encoding", "chunked");
     response.bufferOutput = false;
-    final answer = ai.answer(body);
+    final answer = ai.answerWith(body);
     // curl should run with `--no-buffer` param
     await response.addStream(answer.transform(utf8.encoder));
     await response.close();

@@ -1,14 +1,9 @@
 import 'dart:convert' show json, utf8;
-import 'dart:io' show Platform, stdout;
+import 'dart:io' show stdout;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 
 import 'src/llama_params.dart';
 import 'src/native_llama.dart';
-
-int get _physicalCores {
-  final n = Platform.numberOfProcessors;
-  return n > 4 ? n ~/ 2 : n > 0 ? n : 4;
-}
 
 /// A brief overview of inter-ops among main classes:
 ///
@@ -42,13 +37,13 @@ class LlamaCpp {
   /// Async create LlamaCpp by given params.
   static Future<LlamaCpp> load(
     String path, {
-    int seed = -1,
-    int nThread = 0,
-    int nThreadBatch = -1,
-    int nPredict = -1,
-    int nCtx = 512,
-    int nBatch = 512,
-    int nKeep = 0,
+    int? seed,
+    int? nThread,
+    int? nThreadBatch,
+    int? nPredict,
+    int? nCtx,
+    int? nBatch,
+    int? nKeep,
     int? nGpuLayers,
     int? mainGpu,
     bool numa = false,
@@ -57,7 +52,7 @@ class LlamaCpp {
     final recv = ReceivePort('main.incoming');
     final params = LlamaParams(
       seed: seed,
-      nThread: nThread > 0 ? nThread : _physicalCores,
+      nThread: nThread,
       nThreadBatch: nThreadBatch,
       nPredict: nPredict,
       nCtx: nCtx,
@@ -77,7 +72,7 @@ class LlamaCpp {
     return LlamaCpp._(recv, isolate, send, receiving.cast<String>(), verbose);
   }
 
-  static const _finish = NativeLLama.closeTag;
+  static const _finish = <String, dynamic>{'cmd': NativeLLama.closeTag};
 
   /// Notify isolate to free native resources, after that, finish this isolate.
   Future<void> dispose() async {
@@ -89,9 +84,67 @@ class LlamaCpp {
     _isolate.kill();
   }
 
+  /// Generate text stream by given params.
+  /// [params] json string with params, e.g.:
+  /// ai.answerWith({
+  ///   "prompt": "my question is",
+  ///   "min_p": 20,
+  /// });
+  Stream<String> answerWith(String params) {
+    final request = json.decode(params);
+    if ((request['prompt'] ?? '').isEmpty) {
+      throw Exception("Json body without 'prompt'!");
+    }
+    return _requestAnswer(request);
+  }
+
   /// Generate text stream by given prompt.
   /// @question The prompt passed by user who want model to generate an answer.
-  Stream<String> answer(String request) async* {
+  Stream<String> answer(
+    String question, {
+    int? nPrev,
+    int? nProbs,
+    int? topK,
+    double? topP,
+    double? minP,
+    double? tfsZ,
+    double? typicalP,
+    double? temperature,
+    int? penaltyLastN,
+    double? penaltyRepeat,
+    double? penaltyFrequency,
+    double? penaltyPresent,
+    int? mirostat,
+    double? mirostatTau,
+    double? mirostatEta,
+    bool? penalizeNewline,
+    String? samplersSequence,
+  }) {
+    final request = {
+      'prompt': question,
+      if (nPrev != null) 'n_prev': nPrev,
+      if (nProbs != null) 'n_probs': nProbs,
+      if (topK != null) 'top_k': topK,
+      if (topP != null) 'top_p': topP,
+      if (minP != null) 'min_p': minP,
+      if (tfsZ != null) 'tfs_z': tfsZ,
+      if (typicalP != null) 'typical_p': typicalP,
+      if (temperature != null) 'temperature': temperature,
+      if (penaltyLastN != null) 'penalty_last_n': penaltyLastN,
+      if (penaltyRepeat != null) 'penalty_repeat': penaltyRepeat,
+      if (penaltyFrequency != null) 'penalty_frequency': penaltyFrequency,
+      if (penaltyPresent != null) 'penalty_present': penaltyPresent,
+      if (mirostat != null) 'mirostat': mirostat,
+      if (mirostatTau != null) 'mirostat_tau': mirostatTau,
+      if (mirostatEta != null) 'mirostat_eta': mirostatEta,
+      if (penalizeNewline != null) 'penalize_newline': penalizeNewline,
+      if (samplersSequence != null) 'samplers_sequence': samplersSequence,
+    };
+
+    return _requestAnswer(request);
+  }
+
+  Stream<String> _requestAnswer(Map<String, dynamic> request) async* {
     if (verbose) {
       stdout.writeln("<<<<<<<<<<<<<<<");
       stdout.writeln("$request\n---------------");
@@ -119,13 +172,13 @@ class LlamaCpp {
 
     final llama = NativeLLama(path, params);
     outgoing.send(incoming.sendPort);
-    final requests = incoming.cast<String>();
+    final requests = incoming.cast<Map<String, dynamic>>();
     await for (final r in requests) {
-      if (r == _finish) {
+      if (r['cmd'] == NativeLLama.closeTag) {
         print("Isolate received '$r', start closing ...");
         break;
       }
-      final params = json.decode(r);
+      final params = r;
       final prompt = params['prompt'] as String;
       final rawStream = llama.generate(
         prompt,
@@ -156,6 +209,6 @@ class LlamaCpp {
       }
     }
     llama.dispose();
-    outgoing.send(_finish);
+    outgoing.send(NativeLLama.closeTag);
   }
 }

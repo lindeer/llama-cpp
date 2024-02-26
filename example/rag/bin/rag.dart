@@ -30,7 +30,7 @@ void main(List<String> argv) async {
     }
     final items = await chroma.query(question, nResults: 2);
     final prompt = _makePrompt(question, items);
-    final answer = gpt.answer(json.encode({"prompt":prompt}));
+    final answer = gpt.answer(prompt);
     stdout.write('< ');
     await for (final str in answer) {
       stdout.write(str);
