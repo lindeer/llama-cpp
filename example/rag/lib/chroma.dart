@@ -1,3 +1,6 @@
+import 'dart:convert' show json, utf8;
+
+import 'package:http/http.dart' as http;
 import 'package:chromadb/chromadb.dart' as db;
 import 'package:llama_cpp/embedding.dart';
 import 'package:uuid/uuid.dart' show Uuid;
@@ -53,7 +56,7 @@ class Chroma {
     final docList = docs.map((e) => e.content).toList(growable: false);
     final embeddings = embed.embedBatch(docList);
     final metadatas = docs.map((e) => {'source': e.source}).toList();
-    await collection.add(
+    await _add(
       ids: ids,
       documents: docList,
       embeddings: embeddings,
@@ -76,10 +79,7 @@ class Chroma {
     final int nResults = 4,
   }) async {
     final embeddings = embed.embedSingle(doc);
-    final result = await collection.query(
-      queryEmbeddings: [embeddings],
-      nResults: nResults,
-    );
+    final result = await _query(embeddings);
     final (ids, docs, metadatas) = (
       result.ids.first,
       result.documents?.first,
@@ -89,11 +89,59 @@ class Chroma {
       final (i, id) = r;
       final doc = docs?[i] ?? '';
       final metadata = metadatas?[i];
-      return ChromaItem._(id, doc, metadata);
+      return ChromaItem._(id, utf8.decode(doc.codeUnits), metadata);
     }).toList(growable: false);
   }
 
   void dispose() {
     embed.dispose();
+  }
+
+  Future<String> _add({
+    required final List<String> ids,
+    final List<List<double>>? embeddings,
+    final List<Map<String, dynamic>>? metadatas,
+    final List<String>? documents,
+  }) async {
+    final id = collection.id;
+    final body = <String, dynamic>{
+      "embeddings": embeddings,
+      "metadatas": metadatas,
+      "documents": documents,
+      "ids": ids,
+      "increment_index": true
+    };
+    final res = await http.post(
+      Uri.parse('http://0.0.0.0:8000/api/v1/collections/$id/add'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(body),
+    );
+    return res.body;
+  }
+
+  Future<db.QueryResponse> _query(List<double> embedding) async {
+    final id = collection.id;
+    final body = <String, dynamic>{
+      "where": {},
+      "where_document": {},
+      "query_embeddings": [embedding],
+      "n_results": 2,
+      "include": [
+        "metadatas",
+        "documents",
+        "distances",
+      ],
+    };
+    final res = await http.post(
+      Uri.parse('http://0.0.0.0:8000/api/v1/collections/$id/query'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(body),
+    );
+    final obj = json.decode(res.body) as Map<String, dynamic>;
+    return db.QueryResponse.fromJson(obj);
   }
 }
