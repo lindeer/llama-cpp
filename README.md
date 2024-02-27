@@ -33,6 +33,33 @@ dart --enable-experiment=native-assets run example/embedding.dart "/path/to/your
 your text line2"
 ```
 
+Also a minimal RAG example in `example/rag/` with all completely local data and model, inspired by [privateGPT](https://github.com/imartinez/privateGPT):
+
+0. setup a chroma server:
+```
+pip install chromadb
+uvicorn chromadb.app:app --reload --workers 1 --host 0.0.0.0 --port 8000
+```
+
+1. `cd example/rag` and creat a `config.json` and config your local models:
+```json
+{
+  "gpt_model": "/your/local/gpt/model",
+  "embedding_model": "/your/local/embedding/model"
+}
+
+```
+
+3. save documents in `corpus/` to vector database (only txt files currently):
+```
+dart --enable-experiment=native-assets run bin/ingest.dart
+```
+
+4. chat with GPT in console, certainly could replace it with your beatiful GUI with flutter:
+```
+dart --enable-experiment=native-assets run bin/rag.dart
+```
+
 ## Getting started
 
 Ask LLM to answer with type writing effect:
