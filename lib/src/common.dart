@@ -156,6 +156,25 @@ String _systemInfo(LlamaParams lp, llama_cpp.llama_context_params params) {
         '($nCtx specified)');
   }
   print(_systemInfo(params, ctxParams));
+  _warmup(model, ctx, ctxParams.n_batch);
 
   return (model, ctx);
+}
+
+void _warmup(ffi.Pointer<llama_cpp.llama_model> model,
+    ffi.Pointer<llama_cpp.llama_context> ctx, int batchSize) {
+  print('warming up the model with an empty run');
+  final tokens = TokenArray(size: 2);
+  tokens.add(llama_cpp.llama_token_bos(model));
+  tokens.add(llama_cpp.llama_token_eos(model));
+  final batch = llama_cpp.llama_batch_get_one(
+    tokens.pointerAt(0),
+    m.min(tokens.length, batchSize),
+    0,
+    0,
+  );
+  llama_cpp.llama_decode(ctx, batch);
+  llama_cpp.llama_kv_cache_clear(ctx);
+  llama_cpp.llama_reset_timings(ctx);
+  tokens.dispose();
 }
