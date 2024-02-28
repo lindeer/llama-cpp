@@ -144,4 +144,32 @@ class Chroma {
     final obj = json.decode(res.body) as Map<String, dynamic>;
     return db.QueryResponse.fromJson(obj);
   }
+
+  /*
+  static Future<db.Collection> _fetchCollection({
+    required final db.ChromaClient client,
+    required final String name,
+  }) async {
+    final body = {
+      "name": name,
+      "get_or_create": true,
+    };
+    final res = await http.post(
+      Uri.parse('http://0.0.0.0:8000/api/v1/collections'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode(body),
+    );
+    final obj = json.decode(res.body);
+    return db.Collection(
+      name: obj['name']!,
+      id: obj['id']!,
+      metadata: obj['metadata'],
+      tenant: client.tenant,
+      database: client.database,
+      api: client.api,
+    );
+  }
+  */
 }
