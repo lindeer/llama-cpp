@@ -115,6 +115,7 @@ final class Embedding {
     return result;
   }
 
+  /// Free context, model and memory objects in C world.
   void dispose() {
     tokenBuf.dispose();
     cStr.dispose();

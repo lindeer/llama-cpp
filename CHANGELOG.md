@@ -4,6 +4,8 @@
 - Code refine.
 - Support embedding.
 - Support GPU building.
+- Add a RAG example.
+- Upgrade llama.cpp to 8c0e8f4e.
 
 ## 1.0.0
 
