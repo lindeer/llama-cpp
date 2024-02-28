@@ -15,7 +15,8 @@ int main(List<String> argv) {
   final prompt = argv.length > 1 ? argv[1] : 'Hello my name is';
   // total length of the sequence including the prompt
   const nLen = 32;
-  llama_cpp.llama_backend_init(false);
+  llama_cpp.llama_backend_init();
+  llama_cpp.llama_numa_init(0);
 
   final cStr = NativeString();
   path.into(cStr);

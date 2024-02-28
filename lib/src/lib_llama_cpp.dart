@@ -23,9 +23,13 @@ external llama_model_quantize_params llama_model_quantize_default_params();
 /// Initialize the llama + ggml backend
 /// If numa is true, use NUMA optimizations
 /// Call once at the start of the program
-@ffi.Native<ffi.Void Function(ffi.Bool)>(symbol: 'llama_backend_init')
-external void llama_backend_init(
-  bool numa,
+@ffi.Native<ffi.Void Function()>(symbol: 'llama_backend_init')
+external void llama_backend_init();
+
+/// optional:
+@ffi.Native<ffi.Void Function(ffi.Int32)>(symbol: 'llama_numa_init')
+external void llama_numa_init(
+  int numa,
 );
 
 /// Call once at the end of the program - currently only used for MPI
@@ -102,6 +106,12 @@ external int llama_n_batch(
 @ffi.Native<ffi.Int32 Function(ffi.Pointer<llama_model>)>(
     symbol: 'llama_vocab_type')
 external int llama_vocab_type1(
+  ffi.Pointer<llama_model> model,
+);
+
+@ffi.Native<ffi.Int32 Function(ffi.Pointer<llama_model>)>(
+    symbol: 'llama_rope_type')
+external int llama_rope_type1(
   ffi.Pointer<llama_model> model,
 );
 
@@ -335,13 +345,15 @@ external void llama_kv_cache_seq_keep(
 );
 
 /// Adds relative position "delta" to all tokens that belong to the specified sequence and have positions in [p0, p1)
-/// If the KV cache is RoPEd, the KV data is updated accordingly
+/// If the KV cache is RoPEd, the KV data is updated accordingly:
+/// - lazily on next llama_decode()
+/// - explicitly with llama_kv_cache_update()
 /// p0 < 0 : [0,  p1]
 /// p1 < 0 : [p0, inf)
 @ffi.Native<
     ffi.Void Function(ffi.Pointer<llama_context>, llama_seq_id, llama_pos,
-        llama_pos, llama_pos)>(symbol: 'llama_kv_cache_seq_shift')
-external void llama_kv_cache_seq_shift(
+        llama_pos, llama_pos)>(symbol: 'llama_kv_cache_seq_add')
+external void llama_kv_cache_seq_add(
   ffi.Pointer<llama_context> ctx,
   int seq_id,
   int p0,
@@ -350,7 +362,9 @@ external void llama_kv_cache_seq_shift(
 );
 
 /// Integer division of the positions by factor of `d > 1`
-/// If the KV cache is RoPEd, the KV data is updated accordingly
+/// If the KV cache is RoPEd, the KV data is updated accordingly:
+/// - lazily on next llama_decode()
+/// - explicitly with llama_kv_cache_update()
 /// p0 < 0 : [0,  p1]
 /// p1 < 0 : [p0, inf)
 @ffi.Native<
@@ -362,6 +376,31 @@ external void llama_kv_cache_seq_div(
   int p0,
   int p1,
   int d,
+);
+
+/// Returns the largest position present in the KV cache for the specified sequence
+@ffi.Native<llama_pos Function(ffi.Pointer<llama_context>, llama_seq_id)>(
+    symbol: 'llama_kv_cache_seq_pos_max')
+external int llama_kv_cache_seq_pos_max(
+  ffi.Pointer<llama_context> ctx,
+  int seq_id,
+);
+
+/// Defragment the KV cache
+/// This will be applied:
+/// - lazily on next llama_decode()
+/// - explicitly with llama_kv_cache_update()
+@ffi.Native<ffi.Void Function(ffi.Pointer<llama_context>)>(
+    symbol: 'llama_kv_cache_defrag')
+external void llama_kv_cache_defrag(
+  ffi.Pointer<llama_context> ctx,
+);
+
+/// Apply the KV cache updates (such as K-shifts, defragmentation, etc.)
+@ffi.Native<ffi.Void Function(ffi.Pointer<llama_context>)>(
+    symbol: 'llama_kv_cache_update')
+external void llama_kv_cache_update(
+  ffi.Pointer<llama_context> ctx,
 );
 
 /// Returns the maximum size in bytes of the state (rng, logits, embedding
@@ -651,6 +690,35 @@ external int llama_tokenize(
 external int llama_token_to_piece(
   ffi.Pointer<llama_model> model,
   int token,
+  ffi.Pointer<ffi.Char> buf,
+  int length,
+);
+
+/// Apply chat template. Inspired by hf apply_chat_template() on python.
+/// Both "model" and "custom_template" are optional, but at least one is required. "custom_template" has higher precedence than "model"
+/// NOTE: This function does not use a jinja parser. It only support a pre-defined list of template. See more: https://github.com/ggerganov/llama.cpp/wiki/Templates-supported-by-llama_chat_apply_template
+/// @param tmpl A Jinja template to use for this chat. If this is nullptr, the model’s default chat template will be used instead.
+/// @param chat Pointer to a list of multiple llama_chat_message
+/// @param n_msg Number of llama_chat_message in this chat
+/// @param add_ass Whether to end the prompt with the token(s) that indicate the start of an assistant message.
+/// @param buf A buffer to hold the output formatted prompt. The recommended alloc size is 2 * (total number of characters of all messages)
+/// @param length The size of the allocated buffer
+/// @return The total number of bytes of the formatted prompt. If is it larger than the size of buffer, you may need to re-alloc it and then re-apply the template.
+@ffi.Native<
+    ffi.Int32 Function(
+        ffi.Pointer<llama_model>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<llama_chat_message>,
+        ffi.Size,
+        ffi.Bool,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32)>(symbol: 'llama_chat_apply_template')
+external int llama_chat_apply_template(
+  ffi.Pointer<llama_model> model,
+  ffi.Pointer<ffi.Char> tmpl,
+  ffi.Pointer<llama_chat_message> chat,
+  int n_msg,
+  bool add_ass,
   ffi.Pointer<ffi.Char> buf,
   int length,
 );
@@ -1021,6 +1089,15 @@ abstract class llama_vocab_type {
   static const int LLAMA_VOCAB_TYPE_WPM = 2;
 }
 
+/// note: these values should be synchronized with ggml_rope
+/// TODO: maybe move this enum to ggml.h (ggml_rope_type)
+abstract class llama_rope_type {
+  static const int LLAMA_ROPE_TYPE_NONE = -1;
+  static const int LLAMA_ROPE_TYPE_NORM = 0;
+  static const int LLAMA_ROPE_TYPE_NEOX = 2;
+  static const int LLAMA_ROPE_TYPE_GLM = 4;
+}
+
 abstract class llama_token_type {
   static const int LLAMA_TOKEN_TYPE_UNDEFINED = 0;
   static const int LLAMA_TOKEN_TYPE_NORMAL = 1;
@@ -1093,38 +1170,59 @@ abstract class llama_ftype {
   static const int LLAMA_FTYPE_MOSTLY_Q2_K_S = 21;
 
   /// except 1d tensors
-  static const int LLAMA_FTYPE_MOSTLY_Q3_K_XS = 22;
+  static const int LLAMA_FTYPE_MOSTLY_IQ3_XS = 22;
 
   /// except 1d tensors
   static const int LLAMA_FTYPE_MOSTLY_IQ3_XXS = 23;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ1_S = 24;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ4_NL = 25;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ3_S = 26;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ3_M = 27;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ2_S = 28;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ2_M = 29;
+
+  /// except 1d tensors
+  static const int LLAMA_FTYPE_MOSTLY_IQ4_XS = 30;
 
   /// not specified in the model file
   static const int LLAMA_FTYPE_GUESSED = 1024;
 }
 
 abstract class llama_rope_scaling_type {
-  static const int LLAMA_ROPE_SCALING_UNSPECIFIED = -1;
-  static const int LLAMA_ROPE_SCALING_NONE = 0;
-  static const int LLAMA_ROPE_SCALING_LINEAR = 1;
-  static const int LLAMA_ROPE_SCALING_YARN = 2;
-  static const int LLAMA_ROPE_SCALING_MAX_VALUE = 2;
+  static const int LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED = -1;
+  static const int LLAMA_ROPE_SCALING_TYPE_NONE = 0;
+  static const int LLAMA_ROPE_SCALING_TYPE_LINEAR = 1;
+  static const int LLAMA_ROPE_SCALING_TYPE_YARN = 2;
+  static const int LLAMA_ROPE_SCALING_TYPE_MAX_VALUE = 2;
 }
 
 abstract class llama_pooling_type {
-  static const int LLAMA_POOLING_NONE = 0;
-  static const int LLAMA_POOLING_MEAN = 1;
-  static const int LLAMA_POOLING_CLS = 2;
+  static const int LLAMA_POOLING_TYPE_NONE = 0;
+  static const int LLAMA_POOLING_TYPE_MEAN = 1;
+  static const int LLAMA_POOLING_TYPE_CLS = 2;
 }
 
 abstract class llama_split_mode {
   /// single GPU
-  static const int LLAMA_SPLIT_NONE = 0;
+  static const int LLAMA_SPLIT_MODE_NONE = 0;
 
   /// split layers and KV across GPUs
-  static const int LLAMA_SPLIT_LAYER = 1;
+  static const int LLAMA_SPLIT_MODE_LAYER = 1;
 
   /// split rows across GPUs
-  static const int LLAMA_SPLIT_ROW = 2;
+  static const int LLAMA_SPLIT_MODE_ROW = 2;
 }
 
 final class llama_token_data extends ffi.Struct {
@@ -1198,9 +1296,9 @@ typedef llama_seq_id = ffi.Int32;
 typedef Dartllama_seq_id = int;
 
 abstract class llama_model_kv_override_type {
-  static const int LLAMA_KV_OVERRIDE_INT = 0;
-  static const int LLAMA_KV_OVERRIDE_FLOAT = 1;
-  static const int LLAMA_KV_OVERRIDE_BOOL = 2;
+  static const int LLAMA_KV_OVERRIDE_TYPE_INT = 0;
+  static const int LLAMA_KV_OVERRIDE_TYPE_FLOAT = 1;
+  static const int LLAMA_KV_OVERRIDE_TYPE_BOOL = 2;
 }
 
 final class llama_model_kv_override extends ffi.Struct {
@@ -1326,6 +1424,10 @@ final class llama_context_params extends ffi.Struct {
   /// YaRN original context size
   @ffi.Uint32()
   external int yarn_orig_ctx;
+
+  /// defragment the KV cache if holes/size > thold, < 0 disabled (default)
+  @ffi.Float()
+  external double defrag_thold;
 
   external ggml_backend_sched_eval_callback cb_eval;
 
@@ -1459,16 +1561,21 @@ abstract class ggml_type {
   static const int GGML_TYPE_IQ2_XXS = 16;
   static const int GGML_TYPE_IQ2_XS = 17;
   static const int GGML_TYPE_IQ3_XXS = 18;
-  static const int GGML_TYPE_I8 = 19;
-  static const int GGML_TYPE_I16 = 20;
-  static const int GGML_TYPE_I32 = 21;
-  static const int GGML_TYPE_COUNT = 22;
+  static const int GGML_TYPE_IQ1_S = 19;
+  static const int GGML_TYPE_IQ4_NL = 20;
+  static const int GGML_TYPE_IQ3_S = 21;
+  static const int GGML_TYPE_IQ2_S = 22;
+  static const int GGML_TYPE_IQ4_XS = 23;
+  static const int GGML_TYPE_I8 = 24;
+  static const int GGML_TYPE_I16 = 25;
+  static const int GGML_TYPE_I32 = 26;
+  static const int GGML_TYPE_COUNT = 27;
 }
 
 abstract class ggml_backend_type {
-  static const int GGML_BACKEND_CPU = 0;
-  static const int GGML_BACKEND_GPU = 10;
-  static const int GGML_BACKEND_GPU_SPLIT = 20;
+  static const int GGML_BACKEND_TYPE_CPU = 0;
+  static const int GGML_BACKEND_TYPE_GPU = 10;
+  static const int GGML_BACKEND_TYPE_GPU_SPLIT = 20;
 }
 
 final class ggml_backend_buffer extends ffi.Opaque {}
@@ -1650,6 +1757,23 @@ final class llama_timings extends ffi.Struct {
 
   @ffi.Int32()
   external int n_eval;
+}
+
+/// used in chat template
+final class llama_chat_message extends ffi.Struct {
+  external ffi.Pointer<ffi.Char> role;
+
+  external ffi.Pointer<ffi.Char> content;
+}
+
+/// numa strategies
+abstract class ggml_numa_strategy {
+  static const int GGML_NUMA_STRATEGY_DISABLED = 0;
+  static const int GGML_NUMA_STRATEGY_DISTRIBUTE = 1;
+  static const int GGML_NUMA_STRATEGY_ISOLATE = 2;
+  static const int GGML_NUMA_STRATEGY_NUMACTL = 3;
+  static const int GGML_NUMA_STRATEGY_MIRROR = 4;
+  static const int GGML_NUMA_STRATEGY_COUNT = 5;
 }
 
 /// Information associated with an individual cell in the KV cache view.

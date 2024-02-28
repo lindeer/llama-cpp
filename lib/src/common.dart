@@ -113,7 +113,8 @@ String _systemInfo(LlamaParams lp, llama_cpp.llama_context_params params) {
   final seed = s > 0 ? s : DateTime.now().millisecondsSinceEpoch ~/ 1000;
   print('seed = $seed');
   print('llama backend init');
-  llama_cpp.llama_backend_init(params.numa);
+  llama_cpp.llama_backend_init();
+  llama_cpp.llama_numa_init(params.numa);
   final modelParams = llama_cpp.llama_model_default_params();
   final nGpuLayers = params.nGpuLayers;
   if (nGpuLayers != null) {

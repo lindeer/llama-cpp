@@ -9,7 +9,7 @@ final class LlamaParams {
   final int? nGpuLayers;
   final int? mainGpu;
   final bool embedding;
-  final bool numa;
+  final int numa;
 
   const LlamaParams({
     this.seed,
@@ -21,6 +21,6 @@ final class LlamaParams {
     this.nGpuLayers,
     this.mainGpu,
     this.embedding = false,
-    this.numa = false,
+    this.numa = 0,
   });
 }

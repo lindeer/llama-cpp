@@ -46,7 +46,7 @@ class LlamaCpp {
     int? nKeep,
     int? nGpuLayers,
     int? mainGpu,
-    bool numa = false,
+    int numa = 0,
     bool verbose = true,
   }) async {
     final recv = ReceivePort('main.incoming');
