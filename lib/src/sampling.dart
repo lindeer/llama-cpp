@@ -136,8 +136,8 @@ class SamplingContext {
     if (params.grammar != null) {}
     final mu = calloc.allocate<ffi.Float>(ffi.sizeOf<ffi.Float>());
     final (p, len) = _createNativeTokens(params);
-    final penaltyLastN = params.penaltyLastN < 0 ? params.nPrev
-        : params.penaltyLastN;
+    final lastN = params.penaltyLastN;
+    final penaltyLastN = lastN < 0 ? params.nPrev : lastN;
     final usedSize = min(len, penaltyLastN);
 
     return SamplingContext._(

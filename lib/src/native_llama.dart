@@ -43,7 +43,8 @@ String _systemInfo(LlamaParams params) {
 
 bool _shouldAddBosToken(ffi.Pointer<llama_cpp.llama_model> model) {
   final addBos = llama_cpp.llama_add_bos_token(model);
-  return addBos != -1 ? addBos != 0
+  return addBos != -1
+      ? addBos != 0
       : llama_cpp.llama_vocab_type1(model) == 0; // LLAMA_VOCAB_TYPE_SPM
 }
 
@@ -68,11 +69,14 @@ final class NativeLLama {
     this.verbose,
   );
 
-  factory NativeLLama(String path, LlamaParams params, {
+  factory NativeLLama(
+    String path,
+    LlamaParams params, {
     bool verbose = false,
   }) {
     final ctxSize = max(params.nCtx, 8);
-    final seed = params.seed > 0 ? params.seed
+    final seed = params.seed > 0
+        ? params.seed
         : DateTime.now().millisecondsSinceEpoch ~/ 1000;
     print('seed = $seed');
     print('llama backend init');
@@ -148,7 +152,8 @@ final class NativeLLama {
   /// Generate token string by @prompt.
   /// Some model would return two tokens to represent a single word,
   /// so it is better to use raw stream.
-  Stream<List<int>> generate(String prompt, {
+  Stream<List<int>> generate(
+    String prompt, {
     int? nPrev,
     int? nProbs,
     int? topK,
@@ -233,8 +238,11 @@ final class NativeLLama {
       yield token;
       ctxSampling.acceptSampling(ctx, [tokenId], true);
       if (verbose) {
-        _log('\nlast: ${_tokensString(ctxSampling.penaltyPointer,
-            ctxSampling.usedSize)}', console: false);
+        final str = _tokensString(
+          ctxSampling.penaltyPointer,
+          ctxSampling.usedSize,
+        );
+        _log('\nlast: $str', console: false);
         _log('>>>>>>>>>');
       }
 
@@ -365,23 +373,43 @@ final class NativeLLama {
           llama_cpp.llama_sample_top_k(ctx, array.pointer, topK, minKeep);
           break;
         case fChar:
-          llama_cpp.llama_sample_tail_free(ctx, array.pointer,
-              params.tfsZ, minKeep);
+          llama_cpp.llama_sample_tail_free(
+            ctx,
+            array.pointer,
+            params.tfsZ,
+            minKeep,
+          );
           break;
         case yChar:
-          llama_cpp.llama_sample_typical(ctx, array.pointer,
-              params.typicalP, minKeep);
+          llama_cpp.llama_sample_typical(
+            ctx,
+            array.pointer,
+            params.typicalP,
+            minKeep,
+          );
           break;
         case pChar:
-          llama_cpp.llama_sample_top_p(ctx, array.pointer,
-              params.topP, minKeep);
+          llama_cpp.llama_sample_top_p(
+            ctx,
+            array.pointer,
+            params.topP,
+            minKeep,
+          );
           break;
         case mChar:
-          llama_cpp.llama_sample_min_p(ctx, array.pointer,
-              params.minP, minKeep);
+          llama_cpp.llama_sample_min_p(
+            ctx,
+            array.pointer,
+            params.minP,
+            minKeep,
+          );
           break;
         case tChar:
-          llama_cpp.llama_sample_temp(ctx, array.pointer, params.temperature);
+          llama_cpp.llama_sample_temp(
+            ctx,
+            array.pointer,
+            params.temperature,
+          );
           break;
         default:
           break;

@@ -55,7 +55,8 @@ int main(List<String> argv) {
   tokenBuf.pavedBy(model, cStr);
   final tokenNum = tokenBuf.length;
   final kvReq = tokenNum + (nLen - tokenNum);
-  print("\nn_len = $nLen, n_ctx = $ctxSize, n_kv_req = $kvReq, token_n = $tokenNum, len = ${cStr.length}");
+  print("\nn_len = $nLen, n_ctx = $ctxSize, n_kv_req = $kvReq, "
+      "token_n = $tokenNum, len = ${cStr.length}");
   stderr.write("User prompt is:");
   for (var i = 0; i < tokenNum; i++) {
     final text = cStr.tokenString(model, tokenBuf[i]);

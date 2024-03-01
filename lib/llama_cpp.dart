@@ -30,7 +30,13 @@ class LlamaCpp {
   final Stream<String> _receiving;
   final bool verbose;
 
-  const LlamaCpp._(this._recv, this._isolate, this._send, this._receiving, this.verbose);
+  const LlamaCpp._(
+    this._recv,
+    this._isolate,
+    this._send,
+    this._receiving,
+    this.verbose,
+  );
 
   /// Async create LlamaCpp by given params.
   static Future<LlamaCpp> load(
@@ -120,7 +126,7 @@ class LlamaCpp {
       }
       final params = json.decode(r);
       final prompt = params['prompt'] as String;
-      final s = llama.generate(
+      final rawStream = llama.generate(
         prompt,
         nPrev: params['n_prev'],
         nProbs: params['n_probs'],
@@ -139,7 +145,8 @@ class LlamaCpp {
         mirostatEta: params['mirostat_eta'],
         penalizeNewline: params['penalize_newline'],
         samplersSequence: params['samplers_sequence'],
-      ).transform(utf8.decoder);
+      );
+      final s = rawStream.transform(utf8.decoder);
       await for (final str in s) {
         outgoing.send(str);
         if (str == NativeLLama.engTag) {

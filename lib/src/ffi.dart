@@ -105,7 +105,11 @@ final class TokenArray {
 
   ffi.Pointer<llama_cpp.llama_token> pointerAt(int pos) => _buf + pos;
 
-  void pavedBy(ffi.Pointer<llama_cpp.llama_model> model, NativeString text) {
+  void pavedBy(
+    ffi.Pointer<llama_cpp.llama_model> model,
+    NativeString text, {
+    bool addBos = false,
+  }) {
     final size = text.length + 1;
     _resize(size);
     final len = llama_cpp.llama_tokenize(

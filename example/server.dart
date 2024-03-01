@@ -10,8 +10,7 @@ void main(List<String> argv) async {
     return;
   }
   final path = argv[0];
-  final port = argv.length > 1 ? (int.tryParse(argv[1]) ?? _defaultPort)
-      : _defaultPort;
+  final port = (argv.length > 1 ? int.tryParse(argv[1]) : null) ?? _defaultPort;
   final ai = await LlamaCpp.load(path);
 
   final server = await HttpServer.bind('localhost', port);
