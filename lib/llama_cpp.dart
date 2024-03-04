@@ -7,6 +7,7 @@ import 'src/native_llama.dart';
 
 /// A brief overview of inter-ops among main classes:
 ///
+/// ```
 /// +----------------+---------------------+--------------------+
 /// |  main Isolate  |    llama Isolate    |    native world    |
 /// +----------------+---------------------+--------------------+
@@ -19,6 +20,7 @@ import 'src/native_llama.dart';
 /// |     receiving <-- outgoing          <--       +           |
 /// |                |                     |                    |
 /// +---------------+---------------------+---------------------+
+/// ```
 class LlamaCpp {
   final ReceivePort _recv;
   final Isolate _isolate;

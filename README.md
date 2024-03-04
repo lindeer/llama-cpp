@@ -70,7 +70,7 @@ Ask LLM to answer with type writing effect:
   final path = '/path/to/your/LLM.gguf';
   final llama = await LlamaCpp.load(path, verbose: true);
 
-  await for (final text in llama.answer('{"prompt":"$prompt"}')) {
+  await for (final text in llama.answer(prompt)) {
     stdout.write(text);
   }
   stdout.writeln();
@@ -79,7 +79,7 @@ Ask LLM to answer with type writing effect:
 ```
 or if you want a full answer:
 ```
-final answer = await llama.answer('{"prompt":"$prompt"}').join('');
+final answer = await llama.answer(prompt).join('');
 ```
 
 More examples could be found at `example/`.
