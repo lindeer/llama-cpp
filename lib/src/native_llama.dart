@@ -156,6 +156,7 @@ final class NativeLLama {
         _log('sampled token(${params.mirostat}): ${"$tokenId".padLeft(8)}: ');
       }
       if (tokenId == eosToken) {
+        /// 3 - finished by ending.
         code = 3;
         break;
       }
@@ -178,7 +179,8 @@ final class NativeLLama {
         ..add(tokenId);
     }
     llama_cpp.llama_print_timings(ctx);
-    _log("sample llama logits finished with '$code'.");
+    final n = llama_cpp.llama_get_kv_cache_token_count(ctx);
+    _log("sample llama logits finished with '$code', kv: $n.");
     ctxSampling.free();
     yield utf8.encode(engTag);
   }
