@@ -18,8 +18,7 @@ int main(List<String> argv) {
   llama_cpp.llama_backend_init();
   llama_cpp.llama_numa_init(0);
 
-  final cStr = NativeString();
-  path.into(cStr);
+  final cStr = CharArray.from(path);
   final (model, ctx) = c.loadModel(
     cStr,
     LlamaParams(
@@ -32,7 +31,7 @@ int main(List<String> argv) {
 
   final ctxSize = llama_cpp.llama_n_ctx(ctx);
   final tokenCapacity = prompt.length + 1;
-  prompt.into(cStr);
+  cStr.pavedBy(prompt);
   final tokenBuf = TokenArray(size: tokenCapacity);
   tokenBuf.pavedBy(model, cStr);
   final tokenNum = tokenBuf.length;

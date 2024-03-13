@@ -24,7 +24,7 @@ final class NativeLLama {
   final ffi.Pointer<llama_cpp.llama_model> model;
   final ffi.Pointer<llama_cpp.llama_context> ctx;
   final llama_cpp.llama_batch batch;
-  final NativeString cStr;
+  final CharArray cStr;
   final bool verbose;
   final tokenBuf = TokenArray(size: 64);
   final array = TokenDataArray(512);
@@ -42,8 +42,7 @@ final class NativeLLama {
     LlamaParams params, {
     bool verbose = false,
   }) {
-    final cStr = NativeString();
-    path.into(cStr);
+    final cStr = CharArray.from(path);
     final (model, ctx) = c.loadModel(cStr, params);
     print('add_bos: ${_shouldAddBosToken(model)}');
 
@@ -99,7 +98,7 @@ final class NativeLLama {
     bool? penalizeNewline,
     String? samplersSequence,
   }) async* {
-    prompt.into(cStr);
+    cStr.pavedBy(prompt);
     tokenBuf.pavedBy(model, cStr);
     if (verbose) {
       _log('prompt: "$prompt"');

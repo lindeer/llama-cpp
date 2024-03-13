@@ -12,7 +12,7 @@ import 'llama_params.dart';
 final class Embedding {
   final ffi.Pointer<llama_cpp.llama_model> model;
   final ffi.Pointer<llama_cpp.llama_context> ctx;
-  final NativeString cStr;
+  final CharArray cStr;
   final bool verbose;
   final tokenBuf = TokenArray(size: 64);
 
@@ -32,8 +32,7 @@ final class Embedding {
     int? nGpuLayers,
     bool verbose = false,
   }) {
-    final cStr = NativeString();
-    path.into(cStr);
+    final cStr = CharArray.from(path);
     final (model, ctx) = c.loadModel(
       cStr,
       LlamaParams(
@@ -66,7 +65,7 @@ final class Embedding {
     final batchSize = llama_cpp.llama_n_batch(ctx);
     final batch = llama_cpp.llama_batch_init(batchSize, 0, prompts.length);
     final arrayList = prompts.map((p) {
-      p.into(cStr);
+      cStr.pavedBy(p);
       tokenBuf.pavedBy(model, cStr, addBos: true);
       final l = tokenBuf.toList();
       return l.length > batchSize ? l.sublist(0, batchSize) : l;

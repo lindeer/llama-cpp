@@ -16,8 +16,7 @@ int main(List<String> argv) {
   final path = argv[0];
   final prompt = argv.length > 1 ? argv[1] : 'Hello my name is';
 
-  final cStr = NativeString();
-  path.into(cStr);
+  final cStr = CharArray.from(path);
   final (model, ctx) = c.loadModel(
     cStr,
     LlamaParams(
@@ -39,7 +38,7 @@ int main(List<String> argv) {
   final maxTokenSize = prompts.map((e) => e.length).reduce(m.max);
   final tokens = TokenArray(size: maxTokenSize);
   final tokenList = prompts.map((p) {
-    p.into(cStr);
+    cStr.pavedBy(p);
     tokens.pavedBy(model, cStr, addBos: true);
     final l = tokens.toList();
     return l.length > batchSize ? l.sublist(0, batchSize) : l;

@@ -101,13 +101,13 @@ String _systemInfo(LlamaParams lp, llama_cpp.llama_context_params params) {
   final batch = n != null ? ' (n_threads_batch = $n)' : '';
   return 'system_info: n_threads = ${params.n_threads}$batch '
       '/ ${Platform.numberOfProcessors} '
-      '| ${NativeString.fromNative(llama_cpp.llama_print_system_info())}';
+      '| ${CharArray.toDartString(llama_cpp.llama_print_system_info())}';
 }
 
 /// Load a model from a given path, it could be a LLM also a embedding model.
 /// return both model and context.
 (ffi.Pointer<llama_cpp.llama_model>, ffi.Pointer<llama_cpp.llama_context>)
-    loadModel(NativeString path, LlamaParams params) {
+    loadModel(CharArray path, LlamaParams params) {
   final ctxSize = params.nCtx ?? 512;
   final s = params.seed ?? 0;
   final seed = s > 0 ? s : DateTime.now().millisecondsSinceEpoch ~/ 1000;
