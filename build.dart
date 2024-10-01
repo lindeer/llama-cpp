@@ -18,9 +18,10 @@ Future<String> _commandPath(String cmd) async {
 /// Implements the protocol from `package:native_assets_cli` by building
 /// the C code in `src/` and reporting what native assets it built.
 void main(List<String> args) async {
-  // Parse the build configuration passed to this CLI from Dart or Flutter.
-  final buildConfig = await BuildConfig.fromArgs(args);
+  await build(args, _builder);
+}
 
+Future<void> _builder(BuildConfig buildConfig, BuildOutput buildOutput) async {
   final env = Platform.environment;
   final nvcc = env['LLAMA_CUDA_NVCC'] ?? await _commandPath('nvcc');
   final arch = env['CUDA_DOCKER_ARCH'] ?? 'compute_75';
@@ -49,17 +50,20 @@ void main(List<String> args) async {
     exit(code);
   }
 
-  final linkMode = buildConfig.linkModePreference.preferredLinkMode;
-  final libName = buildConfig.targetOs.libraryFileName(packageName, linkMode);
-  final libUri = buildConfig.outDir.resolve(libName);
-  File(p.join(srcDir.path, _repoLibName)).renameSync(libUri.path);
+  final linkMode = _linkMode(buildConfig.linkModePreference);
+  final libName = buildConfig.targetOS.libraryFileName(packageName, linkMode);
+  final libUri = buildConfig.outputDirectory.resolve(libName);
+  final uri = pkgRoot.resolve(p.join('src', _repoLibName));
+  final file = File.fromUri(uri).resolveSymbolicLinksSync();
+  File(file).renameSync(libUri.path);
 
-  final buildOutput = BuildOutput();
-  buildOutput.assets.add(Asset(
-    id: 'package:$packageName/src/lib_$packageName.dart',
+  buildOutput.addAsset(NativeCodeAsset(
+    package: packageName,
+    name: 'src/lib_$packageName.dart',
     linkMode: linkMode,
-    target: buildConfig.target,
-    path: AssetAbsolutePath(libUri),
+    os: buildConfig.targetOS,
+    file: libUri,
+    architecture: buildConfig.targetArchitecture,
   ));
   final src = [
     'src/llama.cpp',
@@ -69,9 +73,18 @@ void main(List<String> args) async {
     'src/ggml-quants.c',
   ];
 
-  buildOutput.dependencies.dependencies.addAll([
+  buildOutput.addDependencies([
     ...src.map((s) => pkgRoot.resolve(s)),
     pkgRoot.resolve('build.dart'),
   ]);
-  await buildOutput.writeToFile(outDir: buildConfig.outDir);
+}
+
+LinkMode _linkMode(LinkModePreference preference) {
+  if (preference == LinkModePreference.dynamic ||
+      preference == LinkModePreference.preferDynamic) {
+    return DynamicLoadingBundled();
+  }
+  assert(preference == LinkModePreference.static ||
+      preference == LinkModePreference.preferStatic);
+  return StaticLinking();
 }
