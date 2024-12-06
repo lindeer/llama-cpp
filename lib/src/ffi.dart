@@ -55,6 +55,7 @@ final class CharArray {
     final buf = _fillChars(str, (size) => CharArray(size: size));
     return buf;
   }
+
   /// A helper function that converts the given Dart String to `const char *`
   /// with an existing `CharArray`.
   /// The capacity is expanded automatically.
@@ -101,10 +102,16 @@ final class CharArray {
   /// We need convert assigned int to unassigned, or else
   /// `FormatException: Invalid UTF-8 byte` would be thrown.
   List<int> tokenBytes(ffi.Pointer<llama_cpp.llama_model> model, int token) {
-    final len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
+    final len = llama_cpp.llama_token_to_piece(
+      model,
+      token,
+      _buf,
+      _size,
+      false,
+    );
     if (len < 0) {
       _resize(-len);
-      _len = llama_cpp.llama_token_to_piece(model, token, _buf, _size);
+      _len = llama_cpp.llama_token_to_piece(model, token, _buf, _size, false);
     } else {
       _len = len;
     }

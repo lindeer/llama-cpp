@@ -130,9 +130,7 @@ String _systemInfo(LlamaParams lp, llama_cpp.llama_context_params params) {
     throw Exception("Load model from '${path.dartString}' failed");
   }
 
-  final ctxParams = llama_cpp.llama_context_default_params()
-    ..seed = seed
-    ..embedding = params.embedding;
+  final ctxParams = llama_cpp.llama_context_default_params()..seed = seed;
   if (ctxSize > 0) {
     ctxParams.n_ctx = ctxSize;
   }
