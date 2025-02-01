@@ -1,3 +1,8 @@
+## 1.2.0
+
+- upgrade native_assets_cli to 0.8.0
+- upgrade llama.cpp to 8854044
+
 ## 1.1.0
 
 - Upgrade llama.cpp to 60ed04cf to support qwen1.5.

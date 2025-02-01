@@ -1,5 +1,9 @@
 A Dart binding for popular LLM inference framework [llama.cpp](https://github.com/ggerganov/llama.cpp), to bring AI to Dart world!
 
+## Note
+
+`8854044` of `llama.cpp` is latest version supporting single shared library. After that version, `libllama.so` and `libggml.so` were created, but currently dart native-assets not support loading shared libraries at the same time.
+
 ## Overview
 
 - Text generation in a separated Dart isolate.
